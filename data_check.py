@@ -10,8 +10,10 @@ class data_check:
         self.data_dict = data_dict_
         self.flag_format_birth_date = False
         self.flag_format_death_date = False
+        self.flag_value_birth_year = False  # 出生时间的年份限制
         self.flag_value_birth_month = False  # 出生时间的月份限制
         self.flag_value_birth_day = False   # 出生时间的日限制
+        self.flag_value_death_year = False  # 去世时间的年份限制
         self.flag_value_death_month = False  # 去世时间的月份限制
         self.flag_value_death_day = False   # 去世时间的日限制
         self.flag_format_person_weight_id = False
@@ -111,7 +113,6 @@ class data_check:
 
         return self.flag_format_birth_date
 
-
     def format_check_death_date(self):
         """
             死亡日期格式检查
@@ -150,59 +151,9 @@ class data_check:
                         self.flag_format_death_date = True
         return self.flag_format_death_date
 
-    def value_check_birthday_death_date(self):
-
+    def check_birthday_year_month_day(self):
         """
-            Type_error:
-            1、出生时间在死亡时间之后；
-            2、死亡时间与出生时间相差>100岁；
-            3、根据死亡时间与出生时间得出的年龄与实际给出的age字段值相差大于2的；
-            4、有出生和死亡时间但age为空的;
-            5、年龄age<10;
-        """
-
-        if self.time_of_birth and self.time_of_death:
-            if str(self.time_of_death).startswith("-"):  # 公元前 去世
-                time_of_death_ = self.time_of_death[1:-1]
-                year_death = time_of_death_.split("-")[0]
-                time_of_birth_ = self.time_of_birth[1:-1]
-                year_birth = time_of_birth_.split("-")[0]
-                age = int(year_birth) - int(year_death)
-            else:  # 公元后 去世
-                if str(self.time_of_birth).startswith("-"):  # 公元前 出生
-                    time_of_birth_ = self.time_of_birth[1:-1]
-                    year_birth = time_of_birth_.split("-")[0]
-                    year_death = self.time_of_death.split("-")[0]
-                    age = int(year_birth) + int(year_death)
-                else:  # 公元后 出生
-                    year_birth = self.time_of_birth.split("-")[0]
-                    year_death = self.time_of_death.split("-")[0]
-                    age = int(year_death) - int(year_birth)
-            if int(age) > 100:
-                self.flag_age_greater_than_100 = True
-                # print(age)
-            elif int(age) <= 0:
-                self.flag_age_less_than_0 = True
-            elif int(age) > 0 and int(age) <= 10:
-                self.flag_age_greater_than_0_and_less_than_10 = True
-
-            # 计算年龄差值
-            if self.data_dict["age"]:
-                age_diff = abs(int(age) - int(self.data_dict["age"]))
-                if age_diff > 2:
-                    print("basic_info_error_根据死亡与出生时间计算年龄与现存age字段值相差大于2")
-                    self.flag_age_diff_greater_than_2 = True
-            else:
-                print("ERROR！ 有出生和死亡时间但age为空")
-                self.flag_age_noexist = True
-
-        return self.flag_age_greater_than_100, self.flag_age_less_than_0, \
-               self.flag_age_greater_than_0_and_less_than_10, \
-               self.flag_age_diff_greater_than_2, self.flag_age_noexist
-
-    def check_birthday_month_day(self):
-        """
-        1、限制：日<=31,   月<=12
+        1、限制：日<=31、月<=12、年!=00
         一年有12个月，其中1月、3月、5月、7月、8月、10月、12月为31天；
         4月、6月、9月、11月为30天；
         2月为28天(闰年为29天)。
@@ -212,8 +163,12 @@ class data_check:
         if self.time_of_birth:
             if str(self.time_of_birth).startswith("-"):  # 公元前 出生
                 time_of_birth_split = self.time_of_birth.split("-")
+                year = time_of_birth_split[-3]
                 month = time_of_birth_split[-2]
                 day = time_of_birth_split[-1]
+                if year == "00":
+                    self.flag_value_birth_year = True
+
                 if month == "00":
                     if day != "00":
                         self.flag_value_birth_day = True
@@ -275,11 +230,11 @@ class data_check:
                         else:
                             print("出生时间-月份格式错误，不在设定 00-12 范围！")
                             self.flag_value_birth_month = True
-            return self.flag_value_birth_month, self.flag_value_birth_day
+            return self.flag_value_birth_year, self.flag_value_birth_month, self.flag_value_birth_day
 
-    def check_death_month_day(self):
+    def check_death_year_month_day(self):
         """
-        1、限制：日<=31,   月<=12
+        1、限制：日<=31、月<=12、年!=00
         一年有12个月，其中1月、3月、5月、7月、8月、10月、12月为31天；
         4月、6月、9月、11月为30天；
         2月为28天(闰年为29天)。
@@ -289,8 +244,12 @@ class data_check:
         if self.time_of_death:
             if str(self.time_of_death).startswith("-"):  # 公元前 出生
                 time_of_death_split = self.time_of_death.split("-")
+                year = time_of_death_split[-3]
                 month = time_of_death_split[-2]
                 day = time_of_death_split[-1]
+                if year == "00":
+                    self.flag_value_death_year = True
+
                 if month == "00":
                     if day != "00":
                         self.flag_value_death_day = True
@@ -352,15 +311,73 @@ class data_check:
                         else:
                             print("死亡时间-月份格式错误，不在设定 00-12 范围！")
                             self.flag_value_death_month = True
-            return self.flag_value_death_month, self.flag_value_death_day
+            return self.flag_value_death_year, self.flag_value_death_month, self.flag_value_death_day
+
+    def value_check_birthday_death_date(self):
+
+        """
+            Type_error:
+            1、出生时间在死亡时间之后；
+            2、死亡时间与出生时间相差>100岁；
+            3、根据死亡时间与出生时间得出的年龄与实际给出的age字段值相差大于2的；
+            4、有出生和死亡时间但age为空的;
+            5、年龄age<10;
+        """
+
+        if self.time_of_birth and self.time_of_death:
+            if str(self.time_of_death).startswith("-"):  # 公元前 去世
+                time_of_death_ = self.time_of_death[1:-1]
+                year_death = time_of_death_.split("-")[0]
+                time_of_birth_ = self.time_of_birth[1:-1]
+                year_birth = time_of_birth_.split("-")[0]
+                age = int(year_birth) - int(year_death)
+            else:  # 公元后 去世
+                if str(self.time_of_birth).startswith("-"):  # 公元前 出生
+                    time_of_birth_ = self.time_of_birth[1:-1]
+                    year_birth = time_of_birth_.split("-")[0]
+                    year_death = self.time_of_death.split("-")[0]
+                    age = int(year_birth) + int(year_death)
+                else:  # 公元后 出生
+                    year_birth = self.time_of_birth.split("-")[0]
+                    year_death = self.time_of_death.split("-")[0]
+                    age = int(year_death) - int(year_birth)
+            if int(age) > 100:
+                self.flag_age_greater_than_100 = True
+                # print(age)
+            elif int(age) <= 0:
+                self.flag_age_less_than_0 = True
+            elif int(age) > 0 and int(age) <= 10:
+                self.flag_age_greater_than_0_and_less_than_10 = True
+
+            # 计算年龄差值
+            if self.data_dict["age"]:
+                age_diff = abs(int(age) - int(self.data_dict["age"]))
+                if age_diff > 2:
+                    print("basic_info_error_根据死亡与出生时间计算年龄与现存age字段值相差大于2")
+                    self.flag_age_diff_greater_than_2 = True
+            else:
+                print("ERROR！ 有出生和死亡时间但age为空")
+                self.flag_age_noexist = True
+
+        return self.flag_age_greater_than_100, self.flag_age_less_than_0, \
+               self.flag_age_greater_than_0_and_less_than_10, \
+               self.flag_age_diff_greater_than_2, self.flag_age_noexist
 
     def value_check_introduction(self):
+        """
+        限制：简介不能为空！
+        :return:
+        """
 
         if not self.introduction:
             self.flag_introduction_noexist = True
             return self.flag_introduction_noexist
 
     def value_check_all_name(self):
+        """
+        限制：姓名不能为空！
+        :return:
+        """
 
         if not self.all_name:
             self.flag_all_name_noexist = True
