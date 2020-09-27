@@ -153,7 +153,7 @@ class data_check:
 
     def check_birthday_year_month_day(self):
         """
-        1、限制：日<=31、月<=12、年!=00
+        1、限制：日<=31、月<=12、年!=0xx
         一年有12个月，其中1月、3月、5月、7月、8月、10月、12月为31天；
         4月、6月、9月、11月为30天；
         2月为28天(闰年为29天)。
@@ -161,80 +161,81 @@ class data_check:
         :return:
         """
         if self.time_of_birth:
-            if str(self.time_of_birth).startswith("-"):  # 公元前 出生
-                time_of_birth_split = self.time_of_birth.split("-")
-                year = time_of_birth_split[-3]
-                month = time_of_birth_split[-2]
-                day = time_of_birth_split[-1]
-                if year == "00":
-                    self.flag_value_birth_year = True
+            time_of_birth_split = self.time_of_birth.split("-")
+            # if str(self.time_of_birth).startswith("-"):  # 公元前 出生
+            year = time_of_birth_split[-3]
+            month = time_of_birth_split[-2]
+            day = time_of_birth_split[-1]
 
-                if month == "00":
-                    if day != "00":
-                        self.flag_value_birth_day = True
-                        print("出生时间-日错误！请改为00")
-                else:
-                    if not str(month).startswith("0") and int(month) > 12:
-                        print("出生时间-月份错误！大于12了")
+            if year.startswith("0"):
+                self.flag_value_birth_year = True
+                print("出生时间-年份错误！不能为0xx")
+            if month == "00":
+                if day != "00":
+                    self.flag_value_birth_day = True
+                    print("出生时间-日错误！请改为00")
+            else:
+                if not str(month).startswith("0") and int(month) > 12:
+                    print("出生时间-月份错误！大于12了")
+                    self.flag_value_birth_month = True
+
+                if day != "00":
+                    if month == "01":
+                        if not str(day).startswith("0") and int(day) > 31:
+                            self.flag_value_birth_day = True
+                            print("出生时间-日错误！大于31了")
+                    elif month == "02":
+                        if not str(day).startswith("0") and int(day) > 29:  # 粗限制2月份天数，暂时不做闰年判断限制2月天数
+                            self.flag_value_birth_day = True
+                            print("出生时间-日错误！大于29了")
+                    elif month == "03":
+                        if not str(day).startswith("0") and int(day) > 31:
+                            self.flag_value_birth_day = True
+                            print("出生时间-日错误！大于31了")
+                    elif month == "04":
+                        if not str(day).startswith("0") and int(day) > 30:
+                            self.flag_value_birth_day = True
+                            print("出生时间-日错误！大于30了")
+                    elif month == "05":
+                        if not str(day).startswith("0") and int(day) > 31:
+                            self.flag_value_birth_day = True
+                            print("出生时间-日错误！大于31了")
+                    elif month == "06":
+                        if not str(day).startswith("0") and int(day) > 30:
+                            self.flag_value_birth_day = True
+                            print("出生时间-日错误！大于30了")
+                    elif month == "07":
+                        if not str(day).startswith("0") and int(day) > 31:
+                            self.flag_value_birth_day = True
+                            print("出生时间-日错误！大于31了")
+                    elif month == "08":
+                        if not str(day).startswith("0") and int(day) > 31:
+                            self.flag_value_birth_day = True
+                            print("出生时间-日错误！大于31了")
+                    elif month == "09":
+                        if not str(day).startswith("0") and int(day) > 30:
+                            self.flag_value_birth_day = True
+                            print("出生时间-日错误！大于30了")
+                    elif month == "10":
+                        if not str(day).startswith("0") and int(day) > 31:
+                            self.flag_value_birth_day = True
+                            print("出生时间-日错误！大于31了")
+                    elif month == "11":
+                        if not str(day).startswith("0") and int(day) > 30:
+                            self.flag_value_birth_day = True
+                            print("出生时间-日错误！大于30了")
+                    elif month == "12":
+                        if not str(day).startswith("0") and int(day) > 31:
+                            self.flag_value_birth_day = True
+                            print("出生时间-日错误！大于31了")
+                    else:
+                        print("出生时间-月份格式错误，不在设定 00-12 范围！")
                         self.flag_value_birth_month = True
-
-                    if day != "00":
-                        if month == "01":
-                            if not str(day).startswith("0") and int(day) > 31:
-                                self.flag_value_birth_day = True
-                                print("出生时间-日错误！大于31了")
-                        elif month == "02":
-                            if not str(day).startswith("0") and int(day) > 29:  # 粗限制2月份天数，暂时不做闰年判断限制2月天数
-                                self.flag_value_birth_day = True
-                                print("出生时间-日错误！大于29了")
-                        elif month == "03":
-                            if not str(day).startswith("0") and int(day) > 31:
-                                self.flag_value_birth_day = True
-                                print("出生时间-日错误！大于31了")
-                        elif month == "04":
-                            if not str(day).startswith("0") and int(day) > 30:
-                                self.flag_value_birth_day = True
-                                print("出生时间-日错误！大于30了")
-                        elif month == "05":
-                            if not str(day).startswith("0") and int(day) > 31:
-                                self.flag_value_birth_day = True
-                                print("出生时间-日错误！大于31了")
-                        elif month == "06":
-                            if not str(day).startswith("0") and int(day) > 30:
-                                self.flag_value_birth_day = True
-                                print("出生时间-日错误！大于30了")
-                        elif month == "07":
-                            if not str(day).startswith("0") and int(day) > 31:
-                                self.flag_value_birth_day = True
-                                print("出生时间-日错误！大于31了")
-                        elif month == "08":
-                            if not str(day).startswith("0") and int(day) > 31:
-                                self.flag_value_birth_day = True
-                                print("出生时间-日错误！大于31了")
-                        elif month == "09":
-                            if not str(day).startswith("0") and int(day) > 30:
-                                self.flag_value_birth_day = True
-                                print("出生时间-日错误！大于30了")
-                        elif month == "10":
-                            if not str(day).startswith("0") and int(day) > 31:
-                                self.flag_value_birth_day = True
-                                print("出生时间-日错误！大于31了")
-                        elif month == "11":
-                            if not str(day).startswith("0") and int(day) > 30:
-                                self.flag_value_birth_day = True
-                                print("出生时间-日错误！大于30了")
-                        elif month == "12":
-                            if not str(day).startswith("0") and int(day) > 31:
-                                self.flag_value_birth_day = True
-                                print("出生时间-日错误！大于31了")
-                        else:
-                            print("出生时间-月份格式错误，不在设定 00-12 范围！")
-                            self.flag_value_birth_month = True
-            return self.flag_value_birth_year, self.flag_value_birth_month, self.flag_value_birth_day
+        return self.flag_value_birth_year, self.flag_value_birth_month, self.flag_value_birth_day
 
     def check_death_year_month_day(self):
         """
-        1、限制：日<=31、月<=12、年!=00
+        1、限制：日<=31、月<=12、年!=0xx
         一年有12个月，其中1月、3月、5月、7月、8月、10月、12月为31天；
         4月、6月、9月、11月为30天；
         2月为28天(闰年为29天)。
@@ -242,76 +243,76 @@ class data_check:
         :return:
         """
         if self.time_of_death:
-            if str(self.time_of_death).startswith("-"):  # 公元前 出生
-                time_of_death_split = self.time_of_death.split("-")
-                year = time_of_death_split[-3]
-                month = time_of_death_split[-2]
-                day = time_of_death_split[-1]
-                if year == "00":
-                    self.flag_value_death_year = True
+            time_of_death_split = self.time_of_death.split("-")
+            # if str(self.time_of_death).startswith("-"):  # 公元前 出生
+            year = time_of_death_split[-3]
+            month = time_of_death_split[-2]
+            day = time_of_death_split[-1]
+            if year.startswith("0"):
+                self.flag_value_death_year = True
+                print("死亡时间-年份错误！不能为0xx")
+            if month == "00":
+                if day != "00":
+                    self.flag_value_death_day = True
+                    print("死亡时间-日错误！请改为00")
+            else:
+                if not str(month).startswith("0") and int(month) > 12:
+                    print("死亡时间-月份错误！大于12了")
+                    self.flag_value_death_month = True
 
-                if month == "00":
-                    if day != "00":
-                        self.flag_value_death_day = True
-                        print("死亡时间-日错误！请改为00")
-                else:
-                    if not str(month).startswith("0") and int(month) > 12:
-                        print("死亡时间-月份错误！大于12了")
+                if day != "00":
+                    if month == "01":
+                        if not str(day).startswith("0") and int(day) > 31:
+                            self.flag_value_death_day = True
+                            print("死亡时间-日错误！大于31了")
+                    elif month == "02":
+                        if not str(day).startswith("0") and int(day) > 29:  # 粗限制2月份天数，暂时不做闰年判断限制2月天数
+                            self.flag_value_death_day = True
+                            print("死亡时间-日错误！大于29了")
+                    elif month == "03":
+                        if not str(day).startswith("0") and int(day) > 31:
+                            self.flag_value_death_day = True
+                            print("死亡时间-日错误！大于31了")
+                    elif month == "04":
+                        if not str(day).startswith("0") and int(day) > 30:
+                            self.flag_value_death_day = True
+                            print("死亡时间-日错误！大于30了")
+                    elif month == "05":
+                        if not str(day).startswith("0") and int(day) > 31:
+                            self.flag_value_death_day = True
+                            print("死亡时间-日错误！大于31了")
+                    elif month == "06":
+                        if not str(day).startswith("0") and int(day) > 30:
+                            self.flag_value_death_day = True
+                            print("死亡时间-日错误！大于30了")
+                    elif month == "07":
+                        if not str(day).startswith("0") and int(day) > 31:
+                            self.flag_value_death_day = True
+                            print("死亡时间-日错误！大于31了")
+                    elif month == "08":
+                        if not str(day).startswith("0") and int(day) > 31:
+                            self.flag_value_death_day = True
+                            print("死亡时间-日错误！大于31了")
+                    elif month == "09":
+                        if not str(day).startswith("0") and int(day) > 30:
+                            self.flag_value_death_day = True
+                            print("死亡时间-日错误！大于30了")
+                    elif month == "10":
+                        if not str(day).startswith("0") and int(day) > 31:
+                            self.flag_value_death_day = True
+                            print("死亡时间-日错误！大于31了")
+                    elif month == "11":
+                        if not str(day).startswith("0") and int(day) > 30:
+                            self.flag_value_death_day = True
+                            print("死亡时间-日错误！大于30了")
+                    elif month == "12":
+                        if not str(day).startswith("0") and int(day) > 31:
+                            self.flag_value_death_day = True
+                            print("死亡时间-日错误！大于31了")
+                    else:
+                        print("死亡时间-月份格式错误，不在设定 00-12 范围！")
                         self.flag_value_death_month = True
-
-                    if day != "00":
-                        if month == "01":
-                            if not str(day).startswith("0") and int(day) > 31:
-                                self.flag_value_death_day = True
-                                print("死亡时间-日错误！大于31了")
-                        elif month == "02":
-                            if not str(day).startswith("0") and int(day) > 29:  # 粗限制2月份天数，暂时不做闰年判断限制2月天数
-                                self.flag_value_death_day = True
-                                print("死亡时间-日错误！大于29了")
-                        elif month == "03":
-                            if not str(day).startswith("0") and int(day) > 31:
-                                self.flag_value_death_day = True
-                                print("死亡时间-日错误！大于31了")
-                        elif month == "04":
-                            if not str(day).startswith("0") and int(day) > 30:
-                                self.flag_value_death_day = True
-                                print("死亡时间-日错误！大于30了")
-                        elif month == "05":
-                            if not str(day).startswith("0") and int(day) > 31:
-                                self.flag_value_death_day = True
-                                print("死亡时间-日错误！大于31了")
-                        elif month == "06":
-                            if not str(day).startswith("0") and int(day) > 30:
-                                self.flag_value_death_day = True
-                                print("死亡时间-日错误！大于30了")
-                        elif month == "07":
-                            if not str(day).startswith("0") and int(day) > 31:
-                                self.flag_value_death_day = True
-                                print("死亡时间-日错误！大于31了")
-                        elif month == "08":
-                            if not str(day).startswith("0") and int(day) > 31:
-                                self.flag_value_death_day = True
-                                print("死亡时间-日错误！大于31了")
-                        elif month == "09":
-                            if not str(day).startswith("0") and int(day) > 30:
-                                self.flag_value_death_day = True
-                                print("死亡时间-日错误！大于30了")
-                        elif month == "10":
-                            if not str(day).startswith("0") and int(day) > 31:
-                                self.flag_value_death_day = True
-                                print("死亡时间-日错误！大于31了")
-                        elif month == "11":
-                            if not str(day).startswith("0") and int(day) > 30:
-                                self.flag_value_death_day = True
-                                print("死亡时间-日错误！大于30了")
-                        elif month == "12":
-                            if not str(day).startswith("0") and int(day) > 31:
-                                self.flag_value_death_day = True
-                                print("死亡时间-日错误！大于31了")
-                        else:
-                            print("死亡时间-月份格式错误，不在设定 00-12 范围！")
-                            self.flag_value_death_month = True
-            return self.flag_value_death_year, self.flag_value_death_month, self.flag_value_death_day
+        return self.flag_value_death_year, self.flag_value_death_month, self.flag_value_death_day
 
     def value_check_birthday_death_date(self):
 

@@ -146,7 +146,8 @@ class App_login(QWidget):
         self.button_test.setFixedSize(70, 30)
         self.button_test.clicked.connect(self.button_test_on_click)
 
-        self.button_login = QPushButton('登录', self)
+        self.button_login = QPushButton('登陆', self)
+        self.button_login.setShortcut('Return')   # Enter 快捷登陆
         self.button_login.setFixedSize(70, 30)
         self.button_login.clicked.connect(self.button_login_on_click)
 
@@ -219,7 +220,6 @@ class App_login(QWidget):
 
         print("登录 按钮被点击")
         self.job_num = self.job_num_text.text()
-        print("222" + self.job_num)
         if not self.job_num:
             reply1 = QMessageBox.question(self, 'Warning', "工号不能为空！请输入",
                                                 QMessageBox.Ok)
@@ -278,8 +278,10 @@ class App_login(QWidget):
                 main_app.mongodb_name_logs_ = self.mongodb_name_logs
                 main_app.col_logs_ = self.col_logs
 
-                main_app.show()
-                self.close()
+                # main_app.connect_db()  # 连接数据库
+                main_app.show()  # 显示主窗口
+
+                self.close()  # 关闭登录窗口
 
         else:
             print("连接失败！请重试")
@@ -346,14 +348,16 @@ class App(QWidget):  # 继承自 QWidget类
                  mongodb_name_logs="information_update_logs",
                  col_logs="information_ancient_base_log"):
         """
-        :param mongodb_ip_: 服务器ip
-        :param port_: 端口号
-        :param mongodb_name_: 数据库名
-        :param col_temp1_: 校对前集合名
-        :param col_temp2_: 校对后集合名
-        :param col_final_: 最终集合名
-        :param mongodb_name_logs_: 存储（修改记录的）日志数据库名
-        :param col_logs_: （修改记录的）日志集合名
+        :param job_num : 工号
+        :param mongodb_ip: 服务器ip
+        :param port: 端口号
+        :param mongodb_name: 数据库名
+        :param col_temp1: 校对前集合名
+        :param col_temp2: 校对后集合名
+        :param col_final: 最终集合名
+        :param check_status: 校验状态
+        :param mongodb_name_logs: 存储（修改记录的）日志数据库名
+        :param col_logs: （修改记录的）日志集合名
         """
         super().__init__()
         self.title = '基本信息校对助手'
@@ -391,17 +395,6 @@ class App(QWidget):  # 继承自 QWidget类
         self.mongodb_name_logs_ = mongodb_name_logs
         self.col_logs_ = col_logs
 
-        # self.config_dict = {"mongodb_ip": mongodb_ip_, "port": port_,
-        #                     "mongodb_name": mongodb_name_,
-        #                     "col_temp1": col_temp1_,
-        #                     "col_temp2": col_temp2_,
-        #                     "col_final": col_final_,
-        #                     "mongodb_name_logs": mongodb_name_logs_,
-        #                     "col_logs": col_logs_}  # 存储配置参数信息
-
-        """
-            连接数据库
-        """
         self.client = pymongo.MongoClient([self.mongodb_ip_ + ":" + self.port_])
         self.information_ancient_base_temp1 = self.client[self.mongodb_name_][self.col_temp1_]
         self.information_ancient_base_temp2 = self.client[self.mongodb_name_][self.col_temp2_]
@@ -411,7 +404,6 @@ class App(QWidget):  # 继承自 QWidget类
         """
         # self.information_ancient_base_temp1.update({"check_status": "-1"},
         #                                            {"$set": {"check_status": check_status_flag}}, multi=True)
-
         self.initUI_main()
 
     def center(self, ):
@@ -825,6 +817,7 @@ class App(QWidget):  # 继承自 QWidget类
             data_checker.check_death_year_month_day()
 
         flag_introduction_noexist = data_checker.value_check_introduction()
+        flag_all_name_noexist = data_checker.value_check_all_name()
 
         flag_age_greater_than_100 = False
         flag_age_less_than_0 = False
@@ -832,82 +825,86 @@ class App(QWidget):  # 继承自 QWidget类
         flag_age_diff_greater_than_2 = False
         flag_age_noexist = False
 
+        if flag_all_name_noexist:
+            reply0 = QMessageBox.question(self, 'Warning', "姓名-不能为空！请检查。", QMessageBox.Ok)
+            if reply0 == QMessageBox.Ok:
+                print("reply0点击了Ok")
+
         if flag_is_digital_weight_id:
-            reply1 = QMessageBox.question(self, 'Warning', "权重id不是数字，请检查！", QMessageBox.Ok)
+            reply1 = QMessageBox.question(self, 'Warning', "权重id-不是数字，请检查！", QMessageBox.Ok)
             if reply1 == QMessageBox.Ok:
                 print("reply1点击了Ok")
+
         if flag_is_digital_category_id:
-            reply2 = QMessageBox.question(self, 'Warning', "类别id不是数字，请检查！", QMessageBox.Ok)
+            reply2 = QMessageBox.question(self, 'Warning', "类别id-不是数字，请检查！", QMessageBox.Ok)
             if reply2 == QMessageBox.Ok:
                 print("reply2点击了Ok")
 
         if flag_is_digital_age:
-            reply3 = QMessageBox.question(self, 'Warning', "年龄不是数字，请检查！", QMessageBox.Ok)
+            reply3 = QMessageBox.question(self, 'Warning', "年龄-不是数字，请检查！", QMessageBox.Ok)
             if reply3 == QMessageBox.Ok:
                 print("reply3点击了Ok")
 
         if flag_format_birth_date:
-            reply4 = QMessageBox.question(self, 'Warning', "出生时间格式错误，请检查！", QMessageBox.Ok)
+            reply4 = QMessageBox.question(self, 'Warning', "出生时间-格式错误，请检查！", QMessageBox.Ok)
             if reply4 == QMessageBox.Ok:
                 print("reply4点击了Ok")
         else:
             if flag_value_birth_year:
-                reply4_1 = QMessageBox.question(self, 'Warning', "出生时间年份错误，不能为00，请检查！", QMessageBox.Ok)
+                reply4_1 = QMessageBox.question(self, 'Warning', "出生时间-年份错误，不能为0xx，请检查！", QMessageBox.Ok)
                 if reply4_1 == QMessageBox.Ok:
                     print("reply4_1点击了Ok")
 
             if flag_value_birth_month:
-                reply4_2 = QMessageBox.question(self, 'Warning', "出生时间月份错误，超出了范围，请检查！", QMessageBox.Ok)
+                reply4_2 = QMessageBox.question(self, 'Warning', "出生时间-月份错误，超出了范围，请检查！", QMessageBox.Ok)
                 if reply4_2 == QMessageBox.Ok:
                     print("reply4_2点击了Ok")
 
             if flag_value_birth_day:
-                reply4_3 = QMessageBox.question(self, 'Warning', "出生时间日错误，超出了范围，请检查！", QMessageBox.Ok)
+                reply4_3 = QMessageBox.question(self, 'Warning', "出生时间-日错误，超出了范围，请检查！", QMessageBox.Ok)
                 if reply4_3 == QMessageBox.Ok:
                     print("reply4_3点击了Ok")
 
         if flag_format_death_date:
-            reply5 = QMessageBox.question(self, 'Warning', "去世时间格式错误，请检查！", QMessageBox.Ok)
+            reply5 = QMessageBox.question(self, 'Warning', "去世时间-格式错误，请检查！", QMessageBox.Ok)
             if reply5 == QMessageBox.Ok:
                 print("reply5点击了Ok")
         else:
             if flag_value_death_year:
-                reply5_1 = QMessageBox.question(self, 'Warning', "出生时间年份错误，不能为00，请检查！", QMessageBox.Ok)
+                reply5_1 = QMessageBox.question(self, 'Warning', "去世时间-年份错误，不能为0xx，请检查！", QMessageBox.Ok)
                 if reply5_1 == QMessageBox.Ok:
                     print("reply5_1点击了Ok")
 
             if flag_value_death_month:
-                reply5_2 = QMessageBox.question(self, 'Warning', "出生时间月份错误，超出了范围，请检查！", QMessageBox.Ok)
+                reply5_2 = QMessageBox.question(self, 'Warning', "去世时间-月份错误，超出了范围，请检查！", QMessageBox.Ok)
                 if reply5_2 == QMessageBox.Ok:
                     print("reply5_2点击了Ok")
 
             if flag_value_death_day:
-                reply5_3 = QMessageBox.question(self, 'Warning', "出生时间日错误，超出了范围，请检查！", QMessageBox.Ok)
+                reply5_3 = QMessageBox.question(self, 'Warning', "去世时间-日错误，超出了范围，请检查！", QMessageBox.Ok)
                 if reply5_3 == QMessageBox.Ok:
                     print("reply5_3点击了Ok")
 
-
-        if not flag_is_digital_age and not flag_format_birth_date and not flag_format_death_date:
+        if not flag_is_digital_age and not flag_format_birth_date and not flag_format_death_date \
+                and not flag_value_birth_year and not flag_value_birth_month and not flag_value_birth_day \
+                and not flag_value_death_year and not flag_value_death_month and not flag_value_death_day:
 
             flag_age_greater_than_100, flag_age_less_than_0, flag_age_greater_than_0_and_less_than_10, \
             flag_age_diff_greater_than_2, flag_age_noexist = data_checker.value_check_birthday_death_date()
 
             if flag_age_less_than_0:
-                reply6 = QMessageBox.question(self, 'Warning', "出生、去世时间不符合逻辑，"
-                                                                "\n顺序错误，请检查！", QMessageBox.Ok)
+                reply6 = QMessageBox.question(self, 'Warning', "出生、去世时间-不符合逻辑，\n顺序错误，请检查！", QMessageBox.Ok)
                 if reply6 == QMessageBox.Ok:
                     print("reply6点击了Ok")
 
             if flag_age_noexist:
-                reply7 = QMessageBox.question(self, 'Warning', "有出生、去世时间，\n年龄不能为空！请补上",
-                                               QMessageBox.Ok)
+                reply7 = QMessageBox.question(self, 'Warning', "有出生、去世时间，\n年龄不能为空！请补上", QMessageBox.Ok)
                 if reply7 == QMessageBox.Ok:
                     print("reply7点击了Ok")
 
             if flag_age_greater_than_100:
                 reply8 = QMessageBox.question(self, 'Warning', "由出生、去世时间得出\n年龄大于100岁，确定吗？",
-                                              QMessageBox.Yes,
-                                              QMessageBox.No)
+                                              QMessageBox.Yes, QMessageBox.No)
                 if reply8 == QMessageBox.Yes:
                     print("reply8点击了Yes")
                     flag_age_greater_than_100 = False
@@ -915,8 +912,7 @@ class App(QWidget):  # 继承自 QWidget类
                     print("reply8点击了No")
 
             if flag_age_greater_than_0_and_less_than_10:
-                reply9 = QMessageBox.question(self, 'Warning', "年龄小于10岁，确定吗？", QMessageBox.Yes,
-                                              QMessageBox.No)
+                reply9 = QMessageBox.question(self, 'Warning', "年龄小于10岁，确定吗？", QMessageBox.Yes, QMessageBox.No)
                 if reply9 == QMessageBox.Yes:
                     print("reply9点击了Yes")
                     flag_age_greater_than_0_and_less_than_10 = False
@@ -924,8 +920,8 @@ class App(QWidget):  # 继承自 QWidget类
                     print("reply9点击了No")
 
             if flag_age_diff_greater_than_2:
-                reply10 = QMessageBox.question(self, 'Warning', "出生时间、去世时间计算出的年龄与实际给出的\n"
-                                                                 "age字段值相差大于2的，确定吗？",
+                reply10 = QMessageBox.question(self, 'Warning', "出生时间、去世时间计算出的年龄与实际给出的"
+                                                                "\nage字段值相差大于2的，确定吗？",
                                                QMessageBox.Yes, QMessageBox.No)
                 if reply10 == QMessageBox.Yes:
                     print("reply9点击了Yes")
@@ -942,9 +938,12 @@ class App(QWidget):  # 继承自 QWidget类
                 print("reply11点击了No")
 
         if not flag_is_digital_weight_id and not flag_is_digital_category_id and not flag_is_digital_age \
-           and not flag_format_birth_date and not flag_format_death_date and not flag_age_greater_than_100 \
-           and not flag_age_less_than_0 and not flag_age_greater_than_0_and_less_than_10 \
-           and not flag_age_diff_greater_than_2 and not flag_age_noexist and not flag_introduction_noexist:
+           and not flag_format_birth_date and not flag_format_death_date \
+           and not flag_value_birth_year and not flag_value_birth_month and not flag_value_birth_day \
+           and not flag_value_death_year and not flag_value_death_month and not flag_value_death_day \
+           and not flag_age_greater_than_100 and not flag_age_less_than_0 \
+           and not flag_age_greater_than_0_and_less_than_10 and not flag_age_diff_greater_than_2 \
+           and not flag_age_noexist and not flag_all_name_noexist and not flag_introduction_noexist:
             return True
         else:
             return False
@@ -1051,7 +1050,6 @@ class Person_Search(QWidget):  # 继承自 QWidget类
         self.search_layout1.addWidget(self.search_input_text)
         self.search_layout1.setSpacing(15)  # 组件间间距
         self.search_layout1.addWidget(self.search_button)
-
 
         self.data_model = {
                 "person_id": "",
@@ -1303,21 +1301,21 @@ class Person_Search(QWidget):  # 继承自 QWidget类
             设置滚动条样式
         """
         self.table.horizontalScrollBar().setStyleSheet("QScrollBar:horizontal{"
-                                                              "background:#FFFFFF;"
-                                                              "padding-top:3px;"
-                                                              "padding-bottom:3px;"
-                                                              "padding-left:20px;"
-                                                              "padding-right:20px;}"
-                                                              "QScrollBar::handle:horizontal{"
-                                                              "background:#dbdbdb;"
-                                                              "border-radius:6px;"
-                                                              "min-width:80px;}"
-                                                              "QScrollBar::handle:horizontal:hover{"
-                                                              "background:#d0d0d0;}"
-                                                              "QScrollBar::add-line:horizontal{"
-                                                              "background:url(:) center no-repeat;}"
-                                                              "QScrollBar::sub-line:horizontal{"
-                                                              "background:url(:) center no-repeat;}")
+                                                       "background:#FFFFFF;"
+                                                       "padding-top:3px;"
+                                                       "padding-bottom:3px;"
+                                                       "padding-left:20px;"
+                                                       "padding-right:20px;}"
+                                                       "QScrollBar::handle:horizontal{"
+                                                       "background:#dbdbdb;"
+                                                       "border-radius:6px;"
+                                                       "min-width:80px;}"
+                                                       "QScrollBar::handle:horizontal:hover{"
+                                                       "background:#d0d0d0;}"
+                                                       "QScrollBar::add-line:horizontal{"
+                                                       "background:url(:) center no-repeat;}"
+                                                       "QScrollBar::sub-line:horizontal{"
+                                                       "background:url(:) center no-repeat;}")
         # self.table.verticalScrollBar().setStyleSheet()
 
         count_col = 0
