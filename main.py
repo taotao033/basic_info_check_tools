@@ -1,15 +1,9 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QDesktopWidget, QHBoxLayout, QVBoxLayout, \
-    QLabel, QLineEdit, QPushButton
-from PyQt5.QtCore import pyqtSlot
-import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QHeaderView, QTableWidgetItem, QVBoxLayout, \
     QHBoxLayout, QPushButton, QDesktopWidget, QLabel, QLineEdit, QAbstractItemView, \
     QItemDelegate, QAction, QFontDialog, QMessageBox
 from PyQt5.QtGui import QIcon, QBrush, QColor
-from PyQt5.QtGui import QKeySequence
 from PyQt5 import QtGui
-from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtCore import pyqtSlot, Qt
 import pymongo
 import json
@@ -775,9 +769,7 @@ class App(QWidget):  # 继承自 QWidget类
     @pyqtSlot()
     def ser_person_info_button_on_click(self):
         print("点击了 自定义人物检索 按钮")
-        # seracher.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
-        # seracher = Person_Search()
-        seracher.show()
+        searcher.show()
         # subprocess.call("python person_search.py", shell=True)
 
     def auto_save(self):  # 当内容发生改动后自动检测并提示用户是否覆盖
@@ -827,6 +819,11 @@ class App(QWidget):  # 继承自 QWidget类
         flag_is_digital_age = data_checker.is_digital_age()
         flag_format_birth_date = data_checker.format_check_birth_date()
         flag_format_death_date = data_checker.format_check_death_date()
+        flag_value_birth_year, flag_value_birth_month, flag_value_birth_day = \
+            data_checker.check_birthday_year_month_day()
+        flag_value_death_year, flag_value_death_month, flag_value_death_day = \
+            data_checker.check_death_year_month_day()
+
         flag_introduction_noexist = data_checker.value_check_introduction()
 
         flag_age_greater_than_100 = False
@@ -853,11 +850,42 @@ class App(QWidget):  # 继承自 QWidget类
             reply4 = QMessageBox.question(self, 'Warning', "出生时间格式错误，请检查！", QMessageBox.Ok)
             if reply4 == QMessageBox.Ok:
                 print("reply4点击了Ok")
+        else:
+            if flag_value_birth_year:
+                reply4_1 = QMessageBox.question(self, 'Warning', "出生时间年份错误，不能为00，请检查！", QMessageBox.Ok)
+                if reply4_1 == QMessageBox.Ok:
+                    print("reply4_1点击了Ok")
+
+            if flag_value_birth_month:
+                reply4_2 = QMessageBox.question(self, 'Warning', "出生时间月份错误，超出了范围，请检查！", QMessageBox.Ok)
+                if reply4_2 == QMessageBox.Ok:
+                    print("reply4_2点击了Ok")
+
+            if flag_value_birth_day:
+                reply4_3 = QMessageBox.question(self, 'Warning', "出生时间日错误，超出了范围，请检查！", QMessageBox.Ok)
+                if reply4_3 == QMessageBox.Ok:
+                    print("reply4_3点击了Ok")
 
         if flag_format_death_date:
             reply5 = QMessageBox.question(self, 'Warning', "去世时间格式错误，请检查！", QMessageBox.Ok)
             if reply5 == QMessageBox.Ok:
                 print("reply5点击了Ok")
+        else:
+            if flag_value_death_year:
+                reply5_1 = QMessageBox.question(self, 'Warning', "出生时间年份错误，不能为00，请检查！", QMessageBox.Ok)
+                if reply5_1 == QMessageBox.Ok:
+                    print("reply5_1点击了Ok")
+
+            if flag_value_death_month:
+                reply5_2 = QMessageBox.question(self, 'Warning', "出生时间月份错误，超出了范围，请检查！", QMessageBox.Ok)
+                if reply5_2 == QMessageBox.Ok:
+                    print("reply5_2点击了Ok")
+
+            if flag_value_death_day:
+                reply5_3 = QMessageBox.question(self, 'Warning', "出生时间日错误，超出了范围，请检查！", QMessageBox.Ok)
+                if reply5_3 == QMessageBox.Ok:
+                    print("reply5_3点击了Ok")
+
 
         if not flag_is_digital_age and not flag_format_birth_date and not flag_format_death_date:
 
@@ -1304,5 +1332,5 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     login_app = App_login()
     main_app = App()
-    seracher = Person_Search()
+    searcher = Person_Search()
     sys.exit(app.exec_())
