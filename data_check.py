@@ -43,12 +43,12 @@ class data_check:
         """
         if self.data_dict["age"]:
             age = str(self.data_dict["age"])
-            if age.startswith("-"):
+            # if age.startswith("-"):
+            #     self.flag_is_digital_age = True
+            # else:
+            age_sub = re.sub(r'\d', "", age)  # \d匹配任意数字，将其替换为空
+            if age_sub:
                 self.flag_is_digital_age = True
-            else:
-                age_sub = re.sub(r'\d', "", age)  # \d匹配任意数字，将其替换为空
-                if age_sub:
-                    self.flag_is_digital_age = True
 
         return self.flag_is_digital_age
 
