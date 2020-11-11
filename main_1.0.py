@@ -17,7 +17,13 @@ import time
 
 class App_login(QWidget):
 
-    def __init__(self):  # 登陆页
+    def __init__(self, job_num, mongodb_ip, port, mongodb_name,
+                 col_temp1,
+                 col_temp2,
+                 col_final,
+                 check_status,
+                 mongodb_name_logs,
+                 col_logs):  # 登陆页
         super().__init__()
         self.title = '基本信息校对助手'
         self.left = 10
@@ -25,16 +31,16 @@ class App_login(QWidget):
         self.width = 600
         self.height = 110
 
-        self.job_num = ""
-        self.mongodb_ip = "192.168.1.23"
-        self.port = "27017"
-        self.mongodb_name = "information"
-        self.col_temp1 = "information_ancient_base_temp1"  # 校对前
-        self.col_temp2 = "information_ancient_base_temp2"  # 校对后
-        self.col_final = "information_ancient_base"  # 最终库
-        self.mongodb_name_logs = "information_update_logs"
-        self.col_logs = "information_ancient_base_log"
-        self.check_status = "0"
+        self.job_num = job_num
+        self.mongodb_ip = mongodb_ip
+        self.port = port
+        self.mongodb_name = mongodb_name
+        self.col_temp1 = col_temp1  # 校对前
+        self.col_temp2 = col_temp2  # 校对后
+        self.col_final = col_final  # 最终库
+        self.mongodb_name_logs = mongodb_name_logs
+        self.col_logs = col_logs
+        self.check_status = check_status
 
         self.init_UI_login()
 
@@ -109,16 +115,15 @@ class App_login(QWidget):
         self.col_name_a_layout.addWidget(self.db_col_name_text_a)
         self.col_name_a_layout.setSpacing(19)  # 设置控件间距
 
-        self.check_status_layout = QHBoxLayout()  # 水平
-        self.check_status_label = QLabel('校对前状态值:', self)
-        self.check_status_text = QLineEdit(self)
-        self.check_status_text.setToolTip("第一次校对时，输入0；\n第二次校对时，输入1；\n"
-                                          "依次递增...\n输入慎重！不明白请问管理员")
+        # self.check_status_layout = QHBoxLayout()  # 水平
+        # self.check_status_label = QLabel('校对前状态值:', self)
+        # self.check_status_text = QLineEdit(self)
+        # self.check_status_text.setToolTip("0：未校对\n1：已校对\n输入慎重！不明白请问管理员")
         # self.check_status_text.setText(self.db_col_name_after)  # 设置初始值
-        self.check_status_text.setPlaceholderText(self.check_status)  # 设置隐藏文字
-        self.check_status_layout.addWidget(self.check_status_label)
-        self.check_status_layout.addWidget(self.check_status_text)
-        self.check_status_layout.setSpacing(19)  # 设置控件间距
+        # self.check_status_text.setPlaceholderText(self.check_status)  # 设置隐藏文字
+        # self.check_status_layout.addWidget(self.check_status_label)
+        # self.check_status_layout.addWidget(self.check_status_text)
+        # self.check_status_layout.setSpacing(19)  # 设置控件间距
 
         self.db_name_logs_layout = QHBoxLayout()  # 水平
         self.db_name_logs_label = QLabel('存储修改记录-数据库名:', self)
@@ -135,7 +140,6 @@ class App_login(QWidget):
         self.col_logs_layout.addWidget(self.col_logs_label)
         self.col_logs_layout.addWidget(self.col_logs_text)
         self.col_logs_layout.setSpacing(19)  # 设置控件间距
-
 
 
         self.button_zh2en = QPushButton('中文/English', self)
@@ -158,7 +162,7 @@ class App_login(QWidget):
 
         self.main_layout_login = QVBoxLayout()  # 垂直
         self.main_layout_login.addLayout(self.job_num_layout)
-        self.main_layout_login.addLayout(self.check_status_layout)
+        # self.main_layout_login.addLayout(self.check_status_layout)
         self.main_layout_login.addLayout(self.server_ip_layout)
         # self.main_layout_login.addLayout(self.server_port_layout)
         self.main_layout_login.addLayout(self.database_name_layout)
@@ -249,13 +253,11 @@ class App_login(QWidget):
             reply6 = QMessageBox.question(self, 'Warning', "校对后集合名(Col_Name_After)不能为空！请输入",
                                           QMessageBox.Ok)
 
-        self.check_status = self.check_status_text.text()
-        if not self.check_status:
-            reply7 = QMessageBox.question(self, 'Warning', "校对前状态值(Check_Status)不能为空！请输入\n"
-                                                           "第一次校对时，输入0；\n第二次校对时，输入1；\n"
-                                                           "依次递增...\n"
-                                                           "输入慎重！不明白请问管理员",
-                                          QMessageBox.Ok)
+        # self.check_status = self.check_status_text.text()
+        # if not self.check_status:
+        #     reply7 = QMessageBox.question(self, 'Warning', "校对前状态值(Check_Status)不能为空！请输入\n"
+        #                                                    "0：未校对\n1：已校对\n输入慎重！不明白请问管理员",
+        #                                   QMessageBox.Ok)
         """
             登陆前，强制做连通测试
         """
@@ -277,6 +279,7 @@ class App_login(QWidget):
                 main_app.col_final_ = self.col_final
                 main_app.mongodb_name_logs_ = self.mongodb_name_logs
                 main_app.col_logs_ = self.col_logs
+                main_app.check_status_ = self.check_status
 
                 # main_app.connect_db()  # 连接数据库
                 main_app.show()  # 显示主窗口
@@ -340,13 +343,13 @@ class EmptyDelegate(QItemDelegate):
 
 
 class App(QWidget):  # 继承自 QWidget类
-    def __init__(self, job_num="", mongodb_ip="192.168.1.23", port="27017", mongodb_name="information",
-                 col_temp1="information_ancient_base_temp1",
-                 col_temp2="information_ancient_base_temp2",
-                 col_final="information_ancient_base",
-                 check_status="0",
-                 mongodb_name_logs="information_update_logs",
-                 col_logs="information_ancient_base_log"):
+    def __init__(self, job_num, mongodb_ip, port, mongodb_name,
+                 col_temp1,
+                 col_temp2,
+                 col_final,
+                 check_status,
+                 mongodb_name_logs,
+                 col_logs):
         """
         :param job_num : 工号
         :param mongodb_ip: 服务器ip
@@ -1327,8 +1330,35 @@ class Person_Search(QWidget):  # 继承自 QWidget类
 
 
 if __name__ == '__main__':
+    job_num_ = ""
+    mongodb_ip_ = "192.168.1.23"
+    port_ = "27017"
+    mongodb_name_ = "information"
+    col_temp1_ = "information_ancient_base_temp2"
+    col_temp2_ = "information_ancient_base_temp3"
+    col_final_ = "information_ancient_base"
+    check_status_ = "0"
+    mongodb_name_logs_ = "information_update_logs"
+    col_logs_ = "information_ancient_base_log"
+
     app = QApplication(sys.argv)
-    login_app = App_login()
-    main_app = App()
+    login_app = App_login(job_num=job_num_, mongodb_ip=mongodb_ip_, port=port_,
+                          mongodb_name=mongodb_name_,
+                          col_temp1=col_temp1_,
+                          col_temp2=col_temp2_,
+                          col_final=col_final_,
+                          check_status=check_status_,
+                          mongodb_name_logs=mongodb_name_logs_,
+                          col_logs=col_logs_)
+
+    main_app = App(job_num=job_num_, mongodb_ip=mongodb_ip_, port=port_,
+                   mongodb_name=mongodb_name_,
+                   col_temp1=col_temp1_,
+                   col_temp2=col_temp2_,
+                   col_final=col_final_,
+                   check_status=check_status_,
+                   mongodb_name_logs=mongodb_name_logs_,
+                   col_logs=col_logs_)
+
     searcher = Person_Search()
     sys.exit(app.exec_())

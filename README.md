@@ -14,3 +14,5 @@
 2、月份是00时，日必是00<br>
 #### TODO 优化2
 登陆窗口新增Enter快捷登录
+
+information.information_ancient_base_temp1
