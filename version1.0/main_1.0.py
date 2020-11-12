@@ -320,14 +320,11 @@ class App_login(QWidget):
 
         # print the time that has elapsed
 
-
-
 """
     校对次数标记
-    第一次校对时，check_status_flag = "0"
-    第二次校对时，check_status_flag = "1"
-    依次递增...
-    备注：每一次校对任务开展前，记得修改参数。 "col_temp1"对应（上一次校对库）、"col_temp2"对应（校对结果生成的新库）
+    未校对check_status_flag = "0"
+    已校对check_status_flag = "1"
+    备注：每一次校对任务开展前，记得修改参数。 "col_temp1"对应（校对前）、"col_temp2"对应（校对后）
 """
 
 # check_status_flag = "0"
@@ -952,6 +949,7 @@ class App(QWidget):  # 继承自 QWidget类
             return False
 
 
+
 class Person_Search(QWidget):  # 继承自 QWidget类
     def __init__(self):
         super().__init__()
@@ -1092,7 +1090,7 @@ class Person_Search(QWidget):  # 继承自 QWidget类
         # self.search_main_layout.addWidget(self.ser_result_textbox)
 
         # self.create_table(self.data_model)
-        self.create_table2(self.data_model)
+        self.create_search_person_table(self.data_model)
 
         self.search_main_layout.addWidget(self.table)
         self.setLayout(self.search_main_layout)
@@ -1250,35 +1248,35 @@ class Person_Search(QWidget):  # 继承自 QWidget类
         else:
             QMessageBox.question(self, 'Warning', "Sorry! 服务器链接失败，请检查！", QMessageBox.Ok)
 
-    def create_table(self, data):
-        # Create table
-        self.table = QTableWidget()
-        self.table.setRowCount(self.title_length)
-        self.table.setColumnCount(2)
-        # Todo 优化1 设置垂直方向的表头标签
-        self.table.setVerticalHeaderLabels(['人物id', '姓名', '姓', '名', '性别', '民族', '字', '号', '别称', '年龄',
-                                            '籍贯', '国家', '所处时代', '出生时间', '去世时间', '去世地点', '去世原因',
-                                            '外貌特征', '性格特点', '偏好', '职业', '成就', '简介', '权重id', '类别id',
-                                            '同等姓名指代', '籍贯经纬度', '校验状态'])
-        # TODO 优化 6 表格头的显示与隐藏
-        # self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setVisible(False)
+    # def create_table(self, data):
+    #     # Create table
+    #     self.table = QTableWidget()
+    #     self.table.setRowCount(self.title_length)
+    #     self.table.setColumnCount(2)
+    #     # Todo 优化1 设置垂直方向的表头标签
+    #     self.table.setVerticalHeaderLabels(['人物id', '姓名', '姓', '名', '性别', '民族', '字', '号', '别称', '年龄',
+    #                                         '籍贯', '国家', '所处时代', '出生时间', '去世时间', '去世地点', '去世原因',
+    #                                         '外貌特征', '性格特点', '偏好', '职业', '成就', '简介', '权重id', '类别id',
+    #                                         '同等姓名指代', '籍贯经纬度', '校验状态'])
+    #     # TODO 优化 6 表格头的显示与隐藏
+    #     # self.table.verticalHeader().setVisible(False)
+    #     self.table.horizontalHeader().setVisible(False)
+    #
+    #     # self.table.setItemDelegateForColumn(0, EmptyDelegate(self))   # 设置第一列不可编辑
+    #     self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)  # 单元格长度随内容变化
+    #     # self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+    #     self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+    #     # self.table.horizontalHeader().setSectionResizeMode(1, )
+    #     self.table.verticalHeader().setSectionResizeMode(22, QHeaderView.Stretch)  # 单元格伸展
+    #
+    #     count_row = 0
+    #     for k, v in data.items():
+    #         self.table.setItem(count_row, 0, QTableWidgetItem(str(k)))
+    #         # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # 禁止编辑
+    #         self.table.setItem(count_row, 1, QTableWidgetItem(str(v)))
+    #         count_row += 1
 
-        # self.table.setItemDelegateForColumn(0, EmptyDelegate(self))   # 设置第一列不可编辑
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)  # 单元格长度随内容变化
-        # self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        # self.table.horizontalHeader().setSectionResizeMode(1, )
-        self.table.verticalHeader().setSectionResizeMode(22, QHeaderView.Stretch)  # 单元格伸展
-
-        count_row = 0
-        for k, v in data.items():
-            self.table.setItem(count_row, 0, QTableWidgetItem(str(k)))
-            # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # 禁止编辑
-            self.table.setItem(count_row, 1, QTableWidgetItem(str(v)))
-            count_row += 1
-
-    def create_table2(self, data):
+    def create_search_person_table(self, data):
 
         # Create table  多列，每行显示一条数据，根据返回结果设定
         self.table = QTableWidget()
