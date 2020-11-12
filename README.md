@@ -15,7 +15,7 @@
     人物自定义检索新增Enter快捷查询
     
 *   version2.0
-    * main_2.0.py  主程序      3表联动，即基本信息表、关系表、生平表
+    * main.py  主程序      3表联动，即基本信息表、关系表、生平表
     * data_check.py  新建数据校验模块
 *   check_tools_DataFLow.png  数据流转图
 
