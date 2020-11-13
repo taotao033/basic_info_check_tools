@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QHeaderView, QTableWidgetItem, QVBoxLayout, \
     QHBoxLayout, QPushButton, QDesktopWidget, QLabel, QLineEdit, QAbstractItemView, \
-    QItemDelegate, QAction, QFontDialog, QMessageBox
+    QItemDelegate, QAction, QFontDialog, QMessageBox, QComboBox
 from PyQt5.QtGui import QIcon, QBrush, QColor
 from PyQt5 import QtGui
 from PyQt5.QtCore import pyqtSlot, Qt
@@ -15,6 +15,7 @@ from data_check import data_check
 import time
 from login import App_Login
 from person_search import Person_Search
+from rel_name_fuzzy_search import ExtendedComboBox
 
 
 class EmptyDelegate(QItemDelegate):
@@ -62,7 +63,7 @@ class App(QWidget):  # 继承自 QWidget类
         :param search_engine: 人物搜索引擎
         """
         super().__init__()
-        self.title = '基本信息校对助手'
+        self.title = 'EveryX历史数据信息校对助手'
         desktop = QApplication.desktop()
         print("屏幕宽:" + str(desktop.width()))
         print("屏幕高:" + str(desktop.height()))
@@ -77,12 +78,13 @@ class App(QWidget):  # 继承自 QWidget类
         self.FLAG_Current_Table = "base_info"  # 基本信息/关系/生平 3表切换标记
         self.find_one_base_info_in_temp1 = {}   # 临时存放查询的一个人物基本信息
         self.find_rel_info_in_temp1 = {}    # 临时存放查询的一个人物的所有关系
+        self.find_event_info_in_temp1 = {}  # 临时存放查询的一个人物的所有生平
         self.person_id = ""
         self.person_id_prcessed_list = []  # 用于存储col_base_info_temp1中已经校对完的person_id
         self.person_id_prcessed_current_list = []  # 仅用于存储当次程序运行中校对完的person_id
         # self.my_order_dict = collections.OrderedDict()
         self.my_order_dict = {}
-        self.title_length = 28
+        self.title_length = 31
         self.check_after_result_dict = {}
 
         """
@@ -126,6 +128,10 @@ class App(QWidget):  # 继承自 QWidget类
         self.information_ancient_relation_temp1 = self.client[self.mongodb_name_][self.col_rel_info_temp1_]
         self.information_ancient_relation_temp2 = self.client[self.mongodb_name_][self.col_rel_info_temp2_]
         self.information_ancient_relation_log = self.client[self.mongodb_name_logs_][self.col_rel_info_logs_]
+        self.Dictionary_person_category = self.client["dictionary_information"]["Dictionary_person_rel"]
+        self.rel_name2id = {i["rel_name"]: i["rel_id"]
+                            for i in list(self.Dictionary_person_category.find({}, {"rel_name": 1, "rel_id": 1}))}
+        self.all_rel_list = list(self.rel_name2id.keys())
 
         """
             查询和存储生平信息表
@@ -220,11 +226,11 @@ class App(QWidget):  # 继承自 QWidget类
 
     def query_base_info(self):
         self.find_one_base_info_in_temp1 = \
-            self.information_ancient_base_temp1.find_one({"check_status": self.check_status_},
-                                                         {"_id": 0, "check_author": 0})
+            self.information_ancient_base_temp1.find_one({"check_status": self.check_status_}, {"_id": 0})
         if self.find_one_base_info_in_temp1:
             self.person_id = self.find_one_base_info_in_temp1["person_id"]
-            self.information_ancient_base_temp1.update_one({"person_id": self.person_id}, {"$set": {"check_status": "-1"}})
+            self.information_ancient_base_temp1.update_one({"person_id": self.person_id},
+                                                           {"$set": {"check_status": "-1"}})
             print("初版库（AI）####" + self.col_base_info_temp1_ + "####person_id: " + self.person_id + " "
                   + '\"' + "check_status" + '\"' + "更新为: -1")
         else:
@@ -239,8 +245,7 @@ class App(QWidget):  # 继承自 QWidget类
 
     def query_rel_info(self, person_1_id):
         self.find_rel_info_in_temp1 = \
-            list(self.information_ancient_relation_temp1.find({"person_1_id": person_1_id},
-                                                         {"_id": 0, "author": 0, "up_time": 0}))
+            list(self.information_ancient_relation_temp1.find({"person_1_id": person_1_id}, {"_id": 0}))
         if self.find_rel_info_in_temp1:
             self.information_ancient_relation_temp1.update_many({"person_1_id": person_1_id},
                                                                 {"$set": {"check_status": "-1"}})
@@ -252,13 +257,41 @@ class App(QWidget):  # 继承自 QWidget类
         #     if buttonReply == QMessageBox.Ok:
         #         print("person_1_id:" + person_1_id + ", 0条关系，跳过")
 
+    def query_event_info(self, person_id):
+        self.find_event_info_in_temp1 = \
+            list(self.information_ancient_event_temp1.find({"person_id": person_id}, {"_id": 0}))
+        if self.find_event_info_in_temp1:
+            self.information_ancient_event_temp1.update_many({"person_id": person_id},
+                                                             {"$set": {"check_status": "-1"}})
+            print("初版库（AI）####" + self.col_event_info_temp1_ + "####person_id: " + person_id + " "
+                  + '\"' + "check_status" + '\"' + "更新为: -1")
+        # else:   # 此人库中0条关系
+        #     buttonReply = QMessageBox.question(self, 'Sorry!', "此人库中0条关系\n可跳过，请切换到生平",
+        #                                        QMessageBox.Ok)
+        #     if buttonReply == QMessageBox.Ok:
+        #         print("person_1_id:" + person_1_id + ", 0条关系，跳过")
+
     def cell_no_edit(self):
+        """
+            针对基本信息表的
+        :return:
+        """
         self.table.item(0, 1).setFlags(self.table.item(0, 1).flags() ^ Qt.ItemIsEditable)  # 设置person_id 对应的值不可被编辑
         self.table.item(0, 1).setBackground(QtGui.QColor(220, 220, 220))  # 设置person_id 对应的值的底色
         check_status_row = self.title_length - 1
         self.table.item(check_status_row, 1).setFlags(
-            self.table.item(check_status_row, 1).flags() ^ Qt.ItemIsEditable)  # 设置person_id 对应的值不可被编辑
-        self.table.item(self.title_length - 1, 1).setBackground(QtGui.QColor(220, 220, 220))  # 设置check_status 对应的值的底色
+            self.table.item(check_status_row, 1).flags() ^ Qt.ItemIsEditable)  # 设置check_status 对应的值不可被编辑
+        self.table.item(check_status_row, 1).setBackground(QtGui.QColor(220, 220, 220))  # 设置check_status 对应的值的底色
+
+        author_row = self.title_length - 3
+        self.table.item(author_row, 1).setFlags(
+            self.table.item(author_row, 1).flags() ^ Qt.ItemIsEditable)  # 设置author 对应的值不可被编辑
+        self.table.item(author_row, 1).setBackground(QtGui.QColor(220, 220, 220))  # 设置author 对应的值的底色
+
+        up_time_row = self.title_length - 4
+        self.table.item(up_time_row, 1).setFlags(
+            self.table.item(up_time_row, 1).flags() ^ Qt.ItemIsEditable)  # 设置up_time 对应的值不可被编辑
+        self.table.item(up_time_row, 1).setBackground(QtGui.QColor(220, 220, 220))  # 设置up_time 对应的值的底色
 
     def create_base_info_table(self, data):
         """
@@ -266,21 +299,52 @@ class App(QWidget):  # 继承自 QWidget类
         :param data:
         :return:
         """
+        labels_en2zh = {
+            "person_id": "人物id",
+            "all_name": "姓名",
+            "surname": "姓",
+            "name": "名",
+            "sub_name1": "字",
+            "sub_name2": "号",
+            "another_name": "别称",
+            "common_name": "同等姓名指代",
+            "gender": "性别",
+            "age": "年龄",
+            "nationality": "民族",
+            "native_place": "籍贯",
+            "longitude_latitude": "籍贯经纬度",
+            "country1": "国家",
+            "country2": "所处时代",
+            "time_of_birth": "出生时间",
+            "time_of_death": "去世时间",
+            "place_of_death": "去世地点",
+            "cause_of_death": "去世原因",
+            "physical_features": "外貌特征",
+            "characteristics": "性格特点",
+            "preferences": "偏好",
+            "occupation": "职业",
+            "person_category_id": "类别id",
+            "achievements": "成就",
+            "person_weight_id": "权重id",
+            "introduction": "简介",
+            "up_time": "更新时间",
+            "author": "表维护者",
+            "effective_status": "删除状态",
+            "check_status": "校验状态"
+        }
         # Create table
-        self.table = QTableWidget()
+        self.table = QTableWidget()  # 展示基本信息表
         self.table.setRowCount(self.title_length)
         self.table.setColumnCount(2)
         # Todo 优化1 设置垂直方向的表头标签
-        self.table.setVerticalHeaderLabels(['人物id', '姓名', '姓', '名', '性别', '民族', '字', '号', '别称', '年龄',
-                                            '籍贯', '国家', '所处时代', '出生时间', '去世时间', '去世地点', '去世原因',
-                                            '外貌特征', '性格特点', '偏好', '职业', '成就', '简介', '权重id', '类别id',
-                                            '同等姓名指代', '籍贯经纬度', '校验状态'])
+        vertical_header_labels = [labels_en2zh[i] for i in list(data.keys())]
+        self.table.setVerticalHeaderLabels(vertical_header_labels)
         # TODO 优化 6 表格头的显示与隐藏
         # self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setVisible(False)
 
-        self.table.setItemDelegateForColumn(0, EmptyDelegate(self))   # 设置第一列不可编辑
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)  # 单元格长度随内容变化
+        self.table.setItemDelegateForColumn(0, EmptyDelegate(self))   # 设置第0列(english labels列)不可编辑
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)  # 第0列单元格长度随内容变化
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)  # 第一列填充至满屏
         # self.table.horizontalHeader().setSectionResizeMode(1, )
         self.table.verticalHeader().setSectionResizeMode(22, QHeaderView.Stretch)  # 单元格伸展
@@ -298,66 +362,154 @@ class App(QWidget):  # 继承自 QWidget类
     def create_rel_info_table(self, data_list):
         """
             创建关系表格
-        :param data:
+        :param data_list:
         :return:
         """
+
+        labels_en2zh = {
+            "effective_status": "删除状态\n(1:有效 0:删除)",
+            "person_1_name": "人物1姓名",
+            "rel_name": "关系名称",
+            "person_2_name": "人物2姓名",
+            "rel_direction": "关系方向id",
+            "person_1_id": "人物1id",
+            "rel_id": "关系id",
+            "person_2_id": "人物2id",
+            "rel_category_id": "关系类别id",
+            "rel_infor_id": "关系信息标识id",
+            "up_time": "更新时间",
+            "author": "表维护者",
+            "check_status": "校验状态"
+        }
+        """
+            重置数据键值对顺序
+        """
+        data_list_u = []
+        all_rel_list = []
+        if not data_list:   # 若此任务0条关系，则赋空值。
+            # data_list_u.append({la: "" for la in list(labels_en2zh.keys())})
+            self.rel_table = QTableWidget()  # 展示关系表
+            self.rel_table.setRowCount(1)  # 行自增
+            self.rel_table.setColumnCount(len(labels_en2zh))
+            # Todo 优化1 设置水平方向的表头标签
+            horizontal_header_labels = list(labels_en2zh.values())
+            self.rel_table.setHorizontalHeaderLabels(horizontal_header_labels)
+            # TODO 优化 6 表格头的显示与隐藏
+            # self.table.verticalHeader().setVisible(False)
+            self.rel_table.horizontalHeader().setVisible(True)
+            self.rel_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # 所有列自动填充满屏
+        else:
+            for da in data_list:
+                temp = {}
+                for la in list(labels_en2zh.keys()):
+                    temp[la] = da[la]
+                    if la == "rel_name":
+                        all_rel_list.append(da[la])
+                data_list_u.append(temp)
+            # Create table
+            self.rel_table = QTableWidget()  # 展示关系表
+            self.rel_table.setRowCount(len(data_list_u) + 1)   # 行自增
+            self.rel_table.setColumnCount(len(data_list_u[0]))
+            # Todo 优化1 设置水平方向的表头标签
+            horizontal_header_labels = list(labels_en2zh.values())
+            self.rel_table.setHorizontalHeaderLabels(horizontal_header_labels)
+            # TODO 优化 6 表格头的显示与隐藏
+            # self.table.verticalHeader().setVisible(False)
+            self.rel_table.horizontalHeader().setVisible(True)
+            self.rel_table.setItemDelegateForRow(0, EmptyDelegate(self))   # 设置第0行(english labels行)不可编辑
+
+            for col_idx in [0, ]:  # 设置指定的列不可被编辑
+                self.table.setItemDelegateForColumn(col_idx, EmptyDelegate(self))  # 设置第col_idx列不可编辑
+
+            self.rel_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # 所有列自动填充满屏
+
+            count_row = 0
+            for data in data_list_u:
+                count_col = 0
+                for k, v in data.items():
+                    if count_row == 0:
+                        self.rel_table.setItem(0, count_col, QTableWidgetItem(str(k)))
+                        if k == "rel_name":
+                            rel_name_combo = ExtendedComboBox()
+                            rel_name_combo.addItems(self.all_rel_list)
+                            rel_name_combo.setStyleSheet("QComboBox{margin:0px};")
+                            # rel_name_combo.resize(100, 40)
+                            rel_name_combo.setCurrentText(str(v))
+                            self.rel_table.setCellWidget(1, count_col, rel_name_combo)
+                        elif k == "rel_direction":
+                            rel_name_combo2 = ExtendedComboBox()
+                            rel_name_combo2.addItems(["1", "2", "3"])
+                            rel_name_combo2.setCurrentText(str(v))
+                            self.rel_table.setCellWidget(1, count_col, rel_name_combo2)
+                        else:
+                            self.rel_table.setItem(1, count_col, QTableWidgetItem(str(v)))
+                        pass
+                    else:
+                        if k == "rel_name":
+                            rel_name_combo3 = ExtendedComboBox()
+                            rel_name_combo3.addItems(self.all_rel_list)
+                            rel_name_combo3.setCurrentText(str(v))
+                            self.rel_table.setCellWidget(count_row + 1, count_col, rel_name_combo3)
+                        elif k == "rel_direction":
+                            rel_name_combo4 = ExtendedComboBox()
+                            rel_name_combo4.addItems(["1", "2", "3"])
+                            rel_name_combo4.setCurrentText(str(v))
+                            self.rel_table.setCellWidget(count_row + 1, count_col, rel_name_combo4)
+                        else:
+                            self.rel_table.setItem(count_row + 1, count_col, QTableWidgetItem(str(v)))
+
+                    count_col += 1
+                count_row += 1
+
+    def create_event_info_table(self, data_list):
+        """
+            创建生平表格
+        :param data_list:
+        :return:
+        """
+        labels_en2zh = {
+            "event_id": "事件id",
+            "person_id": "人物id",
+            "event_order": "事件顺序",
+            "all_name": "姓名",
+            "time": "时间",
+            "place": "地点",
+            "abstract": "摘要",
+            "content": "内容",
+            "event_weight": "事件权重",
+            "up_time": "更新时间",
+            "author": "表维护者",
+            "longitude_latitude": "经纬度",
+            "event_country": "国家",
+            "effective_status": "删除状态",
+            "check_status": "校验状态"
+        }
         # Create table
-        self.rel_table = QTableWidget()
-        self.rel_table.setRowCount(len(data_list) + 1)   # 行自增
-        self.rel_table.setColumnCount(9)
+        self.event_table = QTableWidget()  # 展示生平表
+        self.event_table.setRowCount(len(data_list) + 1)    # 行自增
+        self.event_table.setColumnCount(len(data_list[0]))
         # Todo 优化1 设置水平方向的表头标签
-        self.rel_table.setHorizontalHeaderLabels(['人物1id', '人物1姓名', '关系id', '关系名称', '人物2id', '人物2姓名',
-                                                 '关系类别id', '关系方向id', '校验状态'])
+        horizontal_header_labels = [labels_en2zh[i] for i in list(data_list[0].keys())]
+        self.event_table.setHorizontalHeaderLabels(horizontal_header_labels)
         # TODO 优化 6 表格头的显示与隐藏
         # self.table.verticalHeader().setVisible(False)
-        self.rel_table.horizontalHeader().setVisible(True)
+        self.event_table.horizontalHeader().setVisible(True)
 
-        self.rel_table.setItemDelegateForColumn(0, EmptyDelegate(self))   # 设置第一列不可编辑
-        self.rel_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # 所有列自动填充满屏
+        self.event_table.setItemDelegateForColumn(0, EmptyDelegate(self))   # 设置第一列不可编辑
+        self.event_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # 所有列自动填充满屏
 
         count_row = 0
         for data in data_list:
             count_col = 0
             for k, v in data.items():
                 if count_row == 0:
-                    self.rel_table.setItem(0, count_col, QTableWidgetItem(str(k)))
-                # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # 禁止编辑
-                    self.rel_table.setItem(1, count_col, QTableWidgetItem(str(v)))
+                    self.event_table.setItem(0, count_col, QTableWidgetItem(str(k)))
+                    # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # 禁止编辑
+                    self.event_table.setItem(1, count_col, QTableWidgetItem(str(v)))
                 else:
-                    self.rel_table.setItem(count_row + 1, count_col, QTableWidgetItem(str(v)))
+                    self.event_table.setItem(count_row + 1, count_col, QTableWidgetItem(str(v)))
                 count_col += 1
             count_row += 1
-        # 禁止全局编辑
-        # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        # self.cell_no_edit()
-
-    def create_life_event_info_table(self, data):
-        """
-            创建生平表格
-        :param data:
-        :return:
-        """
-        # Create table
-        self.life_event_table = QTableWidget()
-        self.life_event_table.setRowCount(len(data) + 1)    # 行自增
-        self.life_event_table.setColumnCount(12)
-        # Todo 优化1 设置水平方向的表头标签
-        self.life_event_table.setHorizontalHeaderLabels(['事件id', '人物id', '事件顺序', '姓名',
-                                                         '时间', '地点', '摘要', '内容', '事件权重',
-                                                         '经纬度', '国家', '校验状态'])
-        # TODO 优化 6 表格头的显示与隐藏
-        # self.table.verticalHeader().setVisible(False)
-        self.life_event_table.horizontalHeader().setVisible(True)
-
-        self.life_event_table.setItemDelegateForColumn(0, EmptyDelegate(self))   # 设置第一列不可编辑
-        self.life_event_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # 所有列自动填充满屏
-
-        count_col = 0
-        for k, v in data.items():
-            self.life_event_table.setItem(0, count_col, QTableWidgetItem(str(k)))
-            # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # 禁止编辑
-            self.life_event_table.setItem(1, count_col, QTableWidgetItem(str(v)))
-            count_col += 1
         # 禁止全局编辑
         # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         # self.cell_no_edit()
@@ -368,28 +520,19 @@ class App(QWidget):  # 继承自 QWidget类
             点击切换为关系表
         :return:
         """
-
-        # current_person_id = self.table.item(0, 1).text()
-        current_person_id = "32714701100435"
+        current_person_id = self.table.item(0, 1).text()
+        # current_person_id = "32941446902867"
         print("current_person_id: " + str(current_person_id))
         if self.FLAG_Current_Table == "base_info":
             print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
             print("当前表：" + self.FLAG_Current_Table)
-            rel_template = [{"person_1_id": "",
-                             "person_1_name": "",
-                             "rel_id": "",
-                             "rel_name": "",
-                             "person_2_id": "",
-                             "person_2_name": "",
-                             "rel_category_id": "",
-                             "rel_direction": "",
-                             "check_status": ""}]
+
             self.query_rel_info(current_person_id)
             rel_temp = self.find_rel_info_in_temp1
             if rel_temp:
                 self.create_rel_info_table(rel_temp)
             else:
-                self.create_rel_info_table(rel_template)
+                self.create_rel_info_table([])
             """
                 此处self.table_layout.replaceWidget替换为关系表
             """
@@ -405,26 +548,35 @@ class App(QWidget):  # 继承自 QWidget类
             """
                 此处self.table_layout.replaceWidget替换为生平表
             """
-            temp_life_e = {"event_id": "32714714500295_0",
-                           "person_id": "32714714500295",
-                           "event_order": 0,
-                           "name": "柏拉图",
-                           "time": "-427-00-00",
-                           "space": "雅典/希腊雅典",
-                           "abstract": "出生",
-                           "content": "柏拉图（Plato，Πλατών，公元前427年—公元前347年），是古希腊伟大的哲学家，也是整个西方文化中最伟大的哲学家和思想家之一。柏拉图生于一个较为富裕的雅典奴隶主贵族家庭，宣称是古雅典国王的后代，他的父亲是阿里斯通(Ariston)、母亲是伯里提俄涅(Perictione)，他在家中排行老四。他也是当时雅典知名的政治家克里提亚(Critias)的侄子，不过两人之间的关系也仍有争议。",
-                           "event_weight": 5,
-                           "longitude_latitude": "23.727539,37.98381",
-                           "event_country": "希腊",
-                           "check_status": "-1"}
-            self.create_life_event_info_table(temp_life_e)
-            self.table_layout.replaceWidget(self.rel_table, self.life_event_table)
-            self.FLAG_Current_Table = "life_event"
+            event_template = [{"event_id": "",
+                               "person_id": "",
+                               "event_order": "",
+                               "all_name": "",
+                               "time": "",
+                               "place": "",
+                               "abstract": "",
+                               "content": "",
+                               "event_weight": "",
+                               "up_time": "",
+                               "author": "",
+                               "longitude_latitude": "",
+                               "event_country": "",
+                               "effective_status": "",
+                               "check_status": ""}]
+
+            self.query_event_info(current_person_id)
+            event_temp = self.find_event_info_in_temp1
+            if event_temp:
+                self.create_event_info_table(event_temp)
+            else:
+                self.create_event_info_table(event_template)
+            self.table_layout.replaceWidget(self.rel_table, self.event_table)
+            self.FLAG_Current_Table = "event"
             print("切换为表：" + self.FLAG_Current_Table)
             self.button1.setEnabled(False)
             self.button2.setEnabled(False)
 
-        elif self.FLAG_Current_Table == "life_event":
+        elif self.FLAG_Current_Table == "event":
             print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
             print("当前表：" + self.FLAG_Current_Table)
             """
@@ -435,7 +587,7 @@ class App(QWidget):  # 继承自 QWidget类
             else:
                 # self.query_base_info()
                 self.create_base_info_table(self.find_one_base_info_in_temp1)
-            self.table_layout.replaceWidget(self.life_event_table, self.table)
+            self.table_layout.replaceWidget(self.event_table, self.table)
             self.FLAG_Current_Table = "base_info"
             print("切换为表：" + self.FLAG_Current_Table)
             self.button1.setEnabled(True)    # 释放"上一页"按钮
@@ -472,7 +624,6 @@ class App(QWidget):  # 继承自 QWidget类
                 self.table.setItem(count_row_, 1, QTableWidgetItem(str(v)))
                 count_row_ += 1
             self.cell_no_edit()
-
 
     @pyqtSlot()
     def button2_on_click(self):
@@ -832,16 +983,16 @@ if __name__ == '__main__':
     Job_num = ""
     Mongodb_ip = "192.168.1.23"
     Port = "27017"
-    Mongodb_name = "information"
-    Col_base_info_temp1 = "information_ancient_base_temp1"
-    Col_base_info_temp2 = "information_ancient_base_temp2"
-    Col_base_info_final = "information_ancient_base"
-    Col_rel_info_temp1 = "information_ancient_relation_temp1"
-    Col_rel_info_temp2 = "information_ancient_relation_temp2"
-    Col_rel_info_final = "information_ancient_relation"
-    Col_event_info_temp1 = "information_ancient_event_temp1"
-    Col_event_info_temp2 = "information_ancient_event_temp2"
-    Col_event_info_final = "information_ancient_event"
+    Mongodb_name = "earth_gis"
+    Col_base_info_temp1 = "Information_ancient_base_temp1"
+    Col_base_info_temp2 = "Information_ancient_base_temp2"
+    Col_base_info_final = "Information_ancient_base"
+    Col_rel_info_temp1 = "Information_ancient_relation_temp1"
+    Col_rel_info_temp2 = "Information_ancient_relation_temp2"
+    Col_rel_info_final = "Information_ancient_relation"
+    Col_event_info_temp1 = "Information_ancient_event_temp1"
+    Col_event_info_temp2 = "Information_ancient_event_temp2"
+    Col_event_info_final = "Information_ancient_event"
     Check_status = "0"
     Mongodb_name_logs = "information_update_logs"
     Col_base_info_logs = "information_ancient_base_log"
@@ -889,3 +1040,4 @@ if __name__ == '__main__':
                           main_win=main_app)
 
     sys.exit(app.exec_())
+
