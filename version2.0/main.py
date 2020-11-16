@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QHeaderView, QTableWidgetItem, QVBoxLayout, \
     QHBoxLayout, QPushButton, QDesktopWidget, QLabel, QLineEdit, QAbstractItemView, \
-    QItemDelegate, QAction, QFontDialog, QMessageBox, QComboBox
+    QItemDelegate, QAction, QFontDialog, QMessageBox
 from PyQt5.QtGui import QIcon, QBrush, QColor
 from PyQt5 import QtGui
 from PyQt5.QtCore import pyqtSlot, Qt
@@ -79,13 +79,18 @@ class App(QWidget):  # 继承自 QWidget类
         self.find_one_base_info_in_temp1 = {}   # 临时存放查询的一个人物基本信息
         self.find_rel_info_in_temp1 = {}    # 临时存放查询的一个人物的所有关系
         self.find_event_info_in_temp1 = {}  # 临时存放查询的一个人物的所有生平
-        self.person_id = ""
+        self.save_current_base_info = {}  # 在视图切换中临时保存当前数据（基本信息）
+        self.save_current_rel_info = []  # 在视图切换中临时保存当前数据（关系信息）
+        self.save_current_event_info = []  # 在视图切换中临时保存当前数据（生平信息）
+        self.current_person_id = ""  # 存放当前表格中person_id
+        self.person_id = ""     # 过程中的person_id
         self.person_id_prcessed_list = []  # 用于存储col_base_info_temp1中已经校对完的person_id
         self.person_id_prcessed_current_list = []  # 仅用于存储当次程序运行中校对完的person_id
         # self.my_order_dict = collections.OrderedDict()
         self.my_order_dict = {}
+        self.my_rel_info_order_dict = {}
+        self.my_event_info_order_dict = {}
         self.title_length = 31
-        self.check_after_result_dict = {}
 
         """
             初始化配置信息
@@ -131,6 +136,7 @@ class App(QWidget):  # 继承自 QWidget类
         self.Dictionary_person_category = self.client["dictionary_information"]["Dictionary_person_rel"]
         self.rel_name2id = {i["rel_name"]: i["rel_id"]
                             for i in list(self.Dictionary_person_category.find({}, {"rel_name": 1, "rel_id": 1}))}
+
         self.all_rel_list = list(self.rel_name2id.keys())
 
         """
@@ -245,7 +251,13 @@ class App(QWidget):  # 继承自 QWidget类
 
     def query_rel_info(self, person_1_id):
         self.find_rel_info_in_temp1 = \
-            list(self.information_ancient_relation_temp1.find({"person_1_id": person_1_id}, {"_id": 0}))
+            list(self.information_ancient_relation_temp1.find({"person_1_id": person_1_id}, {"_id": 0,
+                                                                                             "person_1_id": 0,
+                                                                                             "rel_id": 0,
+                                                                                             "person_2_id": 0,
+                                                                                             "up_time": 0,
+                                                                                             "author": 0,
+                                                                                             }))
         if self.find_rel_info_in_temp1:
             self.information_ancient_relation_temp1.update_many({"person_1_id": person_1_id},
                                                                 {"$set": {"check_status": "-1"}})
@@ -259,7 +271,11 @@ class App(QWidget):  # 继承自 QWidget类
 
     def query_event_info(self, person_id):
         self.find_event_info_in_temp1 = \
-            list(self.information_ancient_event_temp1.find({"person_id": person_id}, {"_id": 0}))
+            list(self.information_ancient_event_temp1.find({"person_id": person_id}, {"_id": 0,
+                                                                                      "person_id": 0,
+                                                                                      "up_time": 0,
+                                                                                      "author": 0,
+                                                                                      }))
         if self.find_event_info_in_temp1:
             self.information_ancient_event_temp1.update_many({"person_id": person_id},
                                                              {"$set": {"check_status": "-1"}})
@@ -347,7 +363,8 @@ class App(QWidget):  # 继承自 QWidget类
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)  # 第0列单元格长度随内容变化
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)  # 第一列填充至满屏
         # self.table.horizontalHeader().setSectionResizeMode(1, )
-        self.table.verticalHeader().setSectionResizeMode(22, QHeaderView.Stretch)  # 单元格伸展
+        # self.table.verticalHeader().setSectionResizeMode(22, QHeaderView.Stretch)  # 单元格伸展
+        self.table.verticalHeader().setSectionResizeMode(26, QHeaderView.Stretch)  # 单元格伸展
 
         count_row = 0
         for k, v in data.items():
@@ -359,6 +376,18 @@ class App(QWidget):  # 继承自 QWidget类
         # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.cell_no_edit()
 
+    def update_rel_id(self, row, col, text):
+        """
+            实现联动，根据选定rel_name实时更新rel_id
+        :param row: 行
+        :param col: 列
+        :param text: 当前关系名称
+        :return:
+        """
+        print("row:" + str(row) + ", col:" + str(col) + ", current text:" + self.rel_name2id[text])
+        # self.comboBox_2.setCurrentText(text)
+        self.rel_table.setItem(row, col, QTableWidgetItem(self.rel_name2id[text]))
+
     def create_rel_info_table(self, data_list):
         """
             创建关系表格
@@ -367,18 +396,13 @@ class App(QWidget):  # 继承自 QWidget类
         """
 
         labels_en2zh = {
+            "rel_infor_id": "关系信息标识id",
             "effective_status": "删除状态\n(1:有效 0:删除)",
             "person_1_name": "人物1姓名",
             "rel_name": "关系名称",
             "person_2_name": "人物2姓名",
             "rel_direction": "关系方向id",
-            "person_1_id": "人物1id",
-            "rel_id": "关系id",
-            "person_2_id": "人物2id",
             "rel_category_id": "关系类别id",
-            "rel_infor_id": "关系信息标识id",
-            "up_time": "更新时间",
-            "author": "表维护者",
             "check_status": "校验状态"
         }
         """
@@ -389,7 +413,7 @@ class App(QWidget):  # 继承自 QWidget类
         if not data_list:   # 若此任务0条关系，则赋空值。
             # data_list_u.append({la: "" for la in list(labels_en2zh.keys())})
             self.rel_table = QTableWidget()  # 展示关系表
-            self.rel_table.setRowCount(1)  # 行自增
+            self.rel_table.setRowCount(0)  # 行自增
             self.rel_table.setColumnCount(len(labels_en2zh))
             # Todo 优化1 设置水平方向的表头标签
             horizontal_header_labels = list(labels_en2zh.values())
@@ -403,8 +427,6 @@ class App(QWidget):  # 继承自 QWidget类
                 temp = {}
                 for la in list(labels_en2zh.keys()):
                     temp[la] = da[la]
-                    if la == "rel_name":
-                        all_rel_list.append(da[la])
                 data_list_u.append(temp)
             # Create table
             self.rel_table = QTableWidget()  # 展示关系表
@@ -428,33 +450,55 @@ class App(QWidget):  # 继承自 QWidget类
                 count_col = 0
                 for k, v in data.items():
                     if count_row == 0:
-                        self.rel_table.setItem(0, count_col, QTableWidgetItem(str(k)))
+                        new_item0 = QTableWidgetItem(str(k))
+                        # new_item0.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+                        self.rel_table.setItem(0, count_col, new_item0)
                         if k == "rel_name":
-                            rel_name_combo = ExtendedComboBox()
-                            rel_name_combo.addItems(self.all_rel_list)
-                            rel_name_combo.setStyleSheet("QComboBox{margin:0px};")
+                            # self.rel_name_combo.setStyleSheet("QComboBox{margin:0px};")
                             # rel_name_combo.resize(100, 40)
-                            rel_name_combo.setCurrentText(str(v))
-                            self.rel_table.setCellWidget(1, count_col, rel_name_combo)
+                            """
+                                添加下拉选项框，可实现模糊查询
+                            """
+                            rel_name_combo_1 = ExtendedComboBox()
+                            rel_name_combo_1.addItems(self.all_rel_list)
+                            rel_name_combo_1.setCurrentText(str(v))
+                            self.rel_table.setCellWidget(1, count_col, rel_name_combo_1)
+
                         elif k == "rel_direction":
-                            rel_name_combo2 = ExtendedComboBox()
-                            rel_name_combo2.addItems(["1", "2", "3"])
-                            rel_name_combo2.setCurrentText(str(v))
-                            self.rel_table.setCellWidget(1, count_col, rel_name_combo2)
+                            rel_direction_combo = ExtendedComboBox()
+                            rel_direction_combo.addItems(["1", "2", "3"])  # 关系方向
+                            rel_direction_combo.setCurrentText(str(v))
+                            self.rel_table.setCellWidget(1, count_col, rel_direction_combo)
+
+                        elif k == "effective_status":
+                            effective_status_combo = ExtendedComboBox()
+                            effective_status_combo.addItems(["0", "1"])  # 删除状态\n(1:有效 0:删除)
+                            effective_status_combo.setCurrentText(str(v))
+                            self.rel_table.setCellWidget(1, count_col, effective_status_combo)
+
                         else:
-                            self.rel_table.setItem(1, count_col, QTableWidgetItem(str(v)))
-                        pass
+                            new_item = QTableWidgetItem(str(v))
+                            # new_item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+                            self.rel_table.setItem(1, count_col, new_item)
                     else:
                         if k == "rel_name":
-                            rel_name_combo3 = ExtendedComboBox()
-                            rel_name_combo3.addItems(self.all_rel_list)
-                            rel_name_combo3.setCurrentText(str(v))
-                            self.rel_table.setCellWidget(count_row + 1, count_col, rel_name_combo3)
+                            rel_name_combo_2 = ExtendedComboBox()
+                            rel_name_combo_2.addItems(self.all_rel_list)
+                            rel_name_combo_2.setCurrentText(str(v))
+                            self.rel_table.setCellWidget(count_row + 1, count_col, rel_name_combo_2)
+
                         elif k == "rel_direction":
-                            rel_name_combo4 = ExtendedComboBox()
-                            rel_name_combo4.addItems(["1", "2", "3"])
-                            rel_name_combo4.setCurrentText(str(v))
-                            self.rel_table.setCellWidget(count_row + 1, count_col, rel_name_combo4)
+                            rel_direction_combo2 = ExtendedComboBox()
+                            rel_direction_combo2.addItems(["1", "2", "3"])
+                            rel_direction_combo2.setCurrentText(str(v))
+                            self.rel_table.setCellWidget(count_row + 1, count_col, rel_direction_combo2)
+
+                        elif k == "effective_status":
+                            effective_status_combo2 = ExtendedComboBox()
+                            effective_status_combo2.addItems(["0", "1"])  # 删除状态\n(1:有效 0:删除)
+                            effective_status_combo2.setCurrentText(str(v))
+                            self.rel_table.setCellWidget(count_row + 1, count_col, effective_status_combo2)
+
                         else:
                             self.rel_table.setItem(count_row + 1, count_col, QTableWidgetItem(str(v)))
 
@@ -468,51 +512,88 @@ class App(QWidget):  # 继承自 QWidget类
         :return:
         """
         labels_en2zh = {
+            "check_status": "校验状态",
+            "effective_status": "删除状态",
             "event_id": "事件id",
-            "person_id": "人物id",
-            "event_order": "事件顺序",
+            "event_weight": "事件权重",
+            "longitude_latitude": "经纬度",
+            "event_country": "国家",
             "all_name": "姓名",
+            "event_order": "事件顺序",
             "time": "时间",
             "place": "地点",
             "abstract": "摘要",
             "content": "内容",
-            "event_weight": "事件权重",
-            "up_time": "更新时间",
-            "author": "表维护者",
-            "longitude_latitude": "经纬度",
-            "event_country": "国家",
-            "effective_status": "删除状态",
-            "check_status": "校验状态"
         }
-        # Create table
-        self.event_table = QTableWidget()  # 展示生平表
-        self.event_table.setRowCount(len(data_list) + 1)    # 行自增
-        self.event_table.setColumnCount(len(data_list[0]))
-        # Todo 优化1 设置水平方向的表头标签
-        horizontal_header_labels = [labels_en2zh[i] for i in list(data_list[0].keys())]
-        self.event_table.setHorizontalHeaderLabels(horizontal_header_labels)
-        # TODO 优化 6 表格头的显示与隐藏
-        # self.table.verticalHeader().setVisible(False)
-        self.event_table.horizontalHeader().setVisible(True)
+        """
+            重置数据键值对顺序
+        """
+        data_list_u = []
+        if not data_list:  # 若此任务0条关系，则赋空值。
+            # data_list_u.append({la: "" for la in list(labels_en2zh.keys())})
+            self.event_table = QTableWidget()  # 展示关系表
+            self.event_table.setRowCount(0)  # 行自增
+            self.event_table.setColumnCount(len(labels_en2zh))
+            # Todo 优化1 设置水平方向的表头标签
+            horizontal_header_labels = list(labels_en2zh.values())
+            self.event_table.setHorizontalHeaderLabels(horizontal_header_labels)
+            # TODO 优化 6 表格头的显示与隐藏
+            # self.table.verticalHeader().setVisible(False)
+            self.event_table.horizontalHeader().setVisible(True)
+            self.event_table.horizontalHeader().setSectionResizeMode(11, QHeaderView.Stretch)  # content列自动填充满屏
+        else:
+            for da in data_list:
+                try:
+                    temp = {}
+                    for la in list(labels_en2zh.keys()):
+                        temp[la] = da[la]
+                    data_list_u.append(temp)
+                except:
+                    print("error!" + data_list)
+            # Create table
+            self.event_table = QTableWidget()  # 展示生平表
+            self.event_table.setRowCount(len(data_list) + 1)    # 行自增
+            self.event_table.setColumnCount(len(data_list[0]))
+            # Todo 优化1 设置水平方向的表头标签
+            horizontal_header_labels = list(labels_en2zh.values())
+            self.event_table.setHorizontalHeaderLabels(horizontal_header_labels)
+            # TODO 优化 6 表格头的显示与隐藏
+            # self.table.verticalHeader().setVisible(False)
+            self.event_table.horizontalHeader().setVisible(True)
 
-        self.event_table.setItemDelegateForColumn(0, EmptyDelegate(self))   # 设置第一列不可编辑
-        self.event_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # 所有列自动填充满屏
+            self.event_table.setItemDelegateForColumn(0, EmptyDelegate(self))   # 设置第一列不可编辑
+            self.event_table.horizontalHeader().setSectionResizeMode(9, QHeaderView.ResizeToContents)  # place列自适应内容
+            self.event_table.horizontalHeader().setSectionResizeMode(10, QHeaderView.ResizeToContents)  # abstract列自适应内容
+            self.event_table.horizontalHeader().setSectionResizeMode(11, QHeaderView.Stretch)  # content列自动填充满屏
 
-        count_row = 0
-        for data in data_list:
-            count_col = 0
-            for k, v in data.items():
-                if count_row == 0:
-                    self.event_table.setItem(0, count_col, QTableWidgetItem(str(k)))
-                    # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # 禁止编辑
-                    self.event_table.setItem(1, count_col, QTableWidgetItem(str(v)))
-                else:
-                    self.event_table.setItem(count_row + 1, count_col, QTableWidgetItem(str(v)))
-                count_col += 1
-            count_row += 1
-        # 禁止全局编辑
-        # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        # self.cell_no_edit()
+            count_row = 0
+            for data in data_list_u:
+                count_col = 0
+                for k, v in data.items():
+                    if count_row == 0:
+                        self.event_table.setItem(0, count_col, QTableWidgetItem(str(k)))
+                        # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # 禁止编辑
+                        if k == "event_weight":
+                            event_weight_combo = ExtendedComboBox()
+                            event_weight_combo.addItems(["1", "2", "3", "4", "5"])  # event_weight
+                            event_weight_combo.setCurrentText(str(v))
+                            self.event_table.setCellWidget(1, count_col, event_weight_combo)
+                            self.event_table.setRowHeight(1, 65)  # 设置行高为10
+                        else:
+                            self.event_table.setItem(1, count_col, QTableWidgetItem(str(v)))
+                            self.event_table.setRowHeight(1, 65)    # 设置行高为10
+                    else:
+                        if k == "event_weight":
+                            event_weight_combo = ExtendedComboBox()
+                            event_weight_combo.addItems(["1", "2", "3", "4", "5"])  # event_weight
+                            event_weight_combo.setCurrentText(str(v))
+                            self.event_table.setCellWidget(count_row + 1, count_col, event_weight_combo)
+                            self.event_table.setRowHeight(1, 65)  # 设置行高为10
+                        else:
+                            self.event_table.setItem(count_row + 1, count_col, QTableWidgetItem(str(v)))
+                            self.event_table.setRowHeight(count_row + 1, 65)
+                    count_col += 1
+                count_row += 1
 
     @pyqtSlot()
     def trans_tables_button_on_click(self):
@@ -520,19 +601,34 @@ class App(QWidget):  # 继承自 QWidget类
             点击切换为关系表
         :return:
         """
-        current_person_id = self.table.item(0, 1).text()
+        self.current_person_id = self.table.item(0, 1).text()
         # current_person_id = "32941446902867"
-        print("current_person_id: " + str(current_person_id))
+        print("current_person_id: " + str(self.current_person_id))
         if self.FLAG_Current_Table == "base_info":
             print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
             print("当前表：" + self.FLAG_Current_Table)
+            print("保存临时回话（base_info）")
+            if self.save_current_base_info:
+                pass
+                self.save_current_base_info = {}     # 用当前覆盖历史
 
-            self.query_rel_info(current_person_id)
-            rel_temp = self.find_rel_info_in_temp1
-            if rel_temp:
-                self.create_rel_info_table(rel_temp)
+            for i in range(self.title_length):
+                self.save_current_base_info[self.table.item(i, 0).text()] = self.table.item(i, 1).text()
+                i += 1
+
+            if self.current_person_id in self.my_rel_info_order_dict:
+                self.create_rel_info_table(self.my_rel_info_order_dict[self.current_person_id])
+                print("id存在")
             else:
-                self.create_rel_info_table([])
+                if self.save_current_rel_info:
+                    self.create_rel_info_table(self.save_current_rel_info)
+                else:
+                    self.query_rel_info(self.current_person_id)
+                    rel_temp = self.find_rel_info_in_temp1
+                    if rel_temp:
+                        self.create_rel_info_table(rel_temp)
+                    else:
+                        self.create_rel_info_table([])
             """
                 此处self.table_layout.replaceWidget替换为关系表
             """
@@ -545,31 +641,52 @@ class App(QWidget):  # 继承自 QWidget类
         elif self.FLAG_Current_Table == "relation":
             print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
             print("当前表：" + self.FLAG_Current_Table)
+            print("保存临时回话（rel_info）")
+            if self.save_current_rel_info:
+                self.save_current_rel_info = []     # 用当前覆盖历史
+
+            rel_row_count = self.rel_table.rowCount()
+            if rel_row_count == 0:
+                self.save_current_rel_info = []
+            else:
+                for row_idx in range(rel_row_count):
+                    if row_idx == 0:
+                        continue
+                    temp = {}
+                    for col_idx in range(self.rel_table.columnCount()):
+                        if col_idx == 1 or col_idx == 3 or col_idx == 5:
+                            temp[self.rel_table.item(0, col_idx).text()] = \
+                                self.rel_table.cellWidget(row_idx, col_idx).currentText()
+                        else:
+                            temp[self.rel_table.item(0, col_idx).text()] = self.rel_table.item(row_idx, col_idx).text()
+                    self.save_current_rel_info.append(temp)
+
+                    # print(json.dumps(temp, ensure_ascii=False, indent=4))
+
+            if self.current_person_id in self.my_event_info_order_dict:
+                self.create_event_info_table(self.my_event_info_order_dict[self.current_person_id])
+            else:
+                if self.save_current_event_info:
+                    self.create_event_info_table(self.save_current_event_info)
+                else:
+                    self.query_event_info(self.current_person_id)
+                    event_temp = self.find_event_info_in_temp1
+                    if event_temp:
+                        self.create_event_info_table(event_temp)
+                    else:
+                        self.create_event_info_table([])
+
+            # event_template = []
+            #
+            # self.query_event_info(current_person_id)
+            # event_temp = self.find_event_info_in_temp1
+            # if event_temp:
+            #     self.create_event_info_table(event_temp)
+            # else:
+            #     self.create_event_info_table(event_template)
             """
                 此处self.table_layout.replaceWidget替换为生平表
             """
-            event_template = [{"event_id": "",
-                               "person_id": "",
-                               "event_order": "",
-                               "all_name": "",
-                               "time": "",
-                               "place": "",
-                               "abstract": "",
-                               "content": "",
-                               "event_weight": "",
-                               "up_time": "",
-                               "author": "",
-                               "longitude_latitude": "",
-                               "event_country": "",
-                               "effective_status": "",
-                               "check_status": ""}]
-
-            self.query_event_info(current_person_id)
-            event_temp = self.find_event_info_in_temp1
-            if event_temp:
-                self.create_event_info_table(event_temp)
-            else:
-                self.create_event_info_table(event_template)
             self.table_layout.replaceWidget(self.rel_table, self.event_table)
             self.FLAG_Current_Table = "event"
             print("切换为表：" + self.FLAG_Current_Table)
@@ -579,14 +696,38 @@ class App(QWidget):  # 继承自 QWidget类
         elif self.FLAG_Current_Table == "event":
             print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
             print("当前表：" + self.FLAG_Current_Table)
+            print("保存临时回话（event）")
+            if self.save_current_event_info:
+                self.save_current_event_info = []     # 用当前覆盖历史
+
+            event_row_count = self.event_table.rowCount()
+            if event_row_count == 0:
+                self.save_current_event_info = []
+            else:
+                for row_idx in range(event_row_count):
+                    if row_idx == 0:
+                        continue
+                    temp = {}
+                    for col_idx in range(self.event_table.columnCount()):
+                        if col_idx == 3:
+                            temp[self.event_table.item(0, col_idx).text()] = \
+                                self.event_table.cellWidget(row_idx, col_idx).currentText()
+                            pass
+                        else:
+                            temp[self.event_table.item(0, col_idx).text()] = \
+                                self.event_table.item(row_idx, col_idx).text()
+                    self.save_current_event_info.append(temp)
+
+                    print(json.dumps(temp, ensure_ascii=False, indent=4))
             """
                 此处self.table_layout.replaceWidget替换为基本信息表
             """
-            if current_person_id in self.my_order_dict:
-                self.create_base_info_table(self.my_order_dict[current_person_id])
+            if self.current_person_id in self.my_order_dict:
+                self.create_base_info_table(self.my_order_dict[self.current_person_id])
             else:
                 # self.query_base_info()
-                self.create_base_info_table(self.find_one_base_info_in_temp1)
+                self.create_base_info_table(self.save_current_base_info)
+
             self.table_layout.replaceWidget(self.event_table, self.table)
             self.FLAG_Current_Table = "base_info"
             print("切换为表：" + self.FLAG_Current_Table)
@@ -717,6 +858,21 @@ class App(QWidget):  # 继承自 QWidget类
                     # if buttonReply2 == QMessageBox.Ok:
                     #     basic_information_table_temp.update_one({}, {"$set": temp_dict})
                     #     print("该条数据库已校对，完成覆盖")
+        """
+            保存当前人物关系和生平数据
+        """
+        self.my_rel_info_order_dict[self.current_person_id] = self.save_current_rel_info
+        self.my_event_info_order_dict[self.current_person_id] = self.save_current_event_info
+        print(json.dumps(self.my_rel_info_order_dict, ensure_ascii=False, indent=4))
+        # print(json.dumps(self.save_current_rel_info, ensure_ascii=False, indent=4))
+        # print(json.dumps(self.save_current_event_info, ensure_ascii=False, indent=4))
+
+        """
+            一个人物结束后，初始化相关变量
+        """
+        self.save_current_base_info = {}
+        self.save_current_rel_info = []
+        self.save_current_event_info = []
 
     @pyqtSlot()
     def button3_on_click(self):
@@ -773,18 +929,18 @@ class App(QWidget):  # 继承自 QWidget类
         if buttonReply2 == QMessageBox.Yes:
             # print("Yeah")
             if buttonReply1 == QMessageBox.Yes:
-                print("保存了当前的数据， 且退出！")
+                print("保存了当前的数据，且退出！")
             elif buttonReply1 == QMessageBox.No:
-                print("没有保存当前数据， 且退出！")
+                print("没有保存当前数据，且退出！")
             """
                 生成比对报告
             """
             self.close()
         else:
             if buttonReply1 == QMessageBox.Yes:
-                print("保存了当前的数据， 且取消退出！")
+                print("保存了当前的数据，且取消退出！")
             elif buttonReply1 == QMessageBox.No:
-                print("没有保存当前数据， 且取消退出！")
+                print("没有保存当前数据，且取消退出！")
 
     @pyqtSlot()
     def ser_person_info_button_on_click(self):
