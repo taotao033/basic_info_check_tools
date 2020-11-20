@@ -22,12 +22,14 @@ class Person_Search(QWidget):  # 继承自 QWidget类
         self.all_name = ""
         self.common_name = ""
         self.ser_input_content = ""
-        self.title_length = 28
+        self.title_length = 31
         self.db_server_ip = "192.168.1.23"
         self.db_server_port = "27017"
-        self.db_database_name = "information"
-        self.db_col_name = "information_ancient_base_temp1"
+        self.db_database_name = "earth_gis"
+        self.db_col_name = "Information_ancient_base_temp1"
         self.search_results = {}
+        self.labels_en2zh_base_info = {}
+        self.setup_tab_labels()
         self.init_search_UI()
         # self.config_dict = {"mongodb_ip": "192.168.1.23", "mongodb_name": "information",
         #                     "col_temp1": "information_ancient_base_temp1"}
@@ -152,6 +154,45 @@ class Person_Search(QWidget):  # 继承自 QWidget类
         self.setLayout(self.search_main_layout)
 
         # self.show()
+
+    def setup_tab_labels(self):
+        """
+            表头schemas
+        :return:
+        """
+        self.labels_en2zh_base_info = {
+            "person_id": "人物id",
+            "all_name": "姓名",
+            "surname": "姓",
+            "name": "名",
+            "sub_name1": "字",
+            "sub_name2": "号",
+            "another_name": "别称",
+            "common_name": "同等姓名指代",
+            "gender": "性别",
+            "age": "年龄",
+            "nationality": "民族",
+            "native_place": "籍贯",
+            "longitude_latitude": "籍贯经纬度",
+            "country1": "国家",
+            "country2": "所处时代",
+            "time_of_birth": "出生时间",
+            "time_of_death": "去世时间",
+            "place_of_death": "去世地点",
+            "cause_of_death": "去世原因",
+            "physical_features": "外貌特征",
+            "characteristics": "性格特点",
+            "preferences": "偏好",
+            "occupation": "职业",
+            "person_category_id": "类别id",
+            "achievements": "成就",
+            "person_weight_id": "权重id",
+            "introduction": "简介",
+            "up_time": "更新时间",
+            "author": "表维护者",
+            "effective_status": "删除状态",
+            "check_status": "校验状态"
+        }
 
     def show_search_result_on_table(self, ser_results):
 
@@ -309,12 +350,9 @@ class Person_Search(QWidget):  # 继承自 QWidget类
         # Create table  多列，每行显示一条数据，根据返回结果设定
         self.table = QTableWidget()
         self.table.setRowCount(1)  # 初始设为2， 每加一条数据行加1
-        self.table.setColumnCount(self.title_length)
+        self.table.setColumnCount(len(self.labels_en2zh_base_info))
         # Todo 优化1 设置水平方向的表头标签
-        self.table.setHorizontalHeaderLabels(['人物id', '姓名', '姓', '名', '性别', '民族', '字', '号', '别称', '年龄',
-                                              '籍贯', '国家', '所处时代', '出生时间', '去世时间', '去世地点', '去世原因',
-                                              '外貌特征', '性格特点', '偏好', '职业', '成就', '简介', '权重id', '类别id',
-                                              '同等姓名指代', '籍贯经纬度', '校验状态'])
+        self.table.setHorizontalHeaderLabels(list(self.labels_en2zh_base_info.values()))
         # TODO 优化 6 表格头的显示与隐藏
         # self.table.verticalHeader().setVisible(False)
         # self.table.horizontalHeader().setVisible(False)

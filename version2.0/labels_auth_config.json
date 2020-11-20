@@ -1,0 +1,68 @@
+{
+      "base_info_table":
+      {
+          "person_id": 0,
+          "all_name": 1,
+          "surname": 1,
+          "name": 1,
+          "sub_name1": 1,
+          "sub_name2": 1,
+          "another_name": 1,
+          "common_name": 1,
+          "gender": 1,
+          "age": 1,
+          "nationality": 1,
+          "native_place": 1,
+          "longitude_latitude": 1,
+          "country1": 1,
+          "country2": 1,
+          "time_of_birth": 1,
+          "time_of_death": 1,
+          "place_of_death": 1,
+          "cause_of_death": 1,
+          "physical_features": 1,
+          "characteristics": 1,
+          "preferences": 1,
+          "occupation": 1,
+          "person_category_id": 1,
+          "achievements": 1,
+          "person_weight_id": 1,
+          "introduction": 1,
+          "up_time": 0,
+          "author": 0,
+          "effective_status": 1,
+          "check_status": 0
+      },
+      "rel_info_table":
+      {
+          "rel_infor_id": 0,
+          "effective_status": 1,
+          "person_1_name": 0,
+          "rel_name": 1,
+          "rel_direction": 1,
+          "person_2_name": 0,
+          "rel_category_id": 1,
+          "person_1_id": 0,
+          "rel_id": 0,
+          "person_2_id": 0,
+          "up_time": 0,
+          "author": 0
+      },
+      "event_info_table":
+      {
+          "person_id": 0,
+          "up_time": 0,
+          "author": 0,
+          "effective_status": 1,
+          "event_id": 0,
+          "event_weight": 1,
+          "longitude_latitude": 1,
+          "event_country": 1,
+          "all_name": 0,
+          "event_order": 1,
+          "time": 1,
+          "place": 1,
+          "abstract": 1,
+          "content": 1
+      }
+}

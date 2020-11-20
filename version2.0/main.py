@@ -1,10 +1,10 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QHeaderView, QTableWidgetItem, QVBoxLayout, \
     QHBoxLayout, QPushButton, QDesktopWidget, QLabel, QLineEdit, QAbstractItemView, \
-    QItemDelegate, QAction, QFontDialog, QMessageBox
+    QItemDelegate, QAction, QFontDialog, QMessageBox,  QComboBox
 from PyQt5.QtGui import QIcon, QBrush, QColor
 from PyQt5 import QtGui
-from PyQt5.QtCore import pyqtSlot, Qt
+from PyQt5.QtCore import pyqtSlot, Qt, pyqtBoundSignal
 import pymongo
 import json
 import copy
@@ -129,6 +129,7 @@ class App(QWidget):  # 继承自 QWidget类
         self.searcher = search_engine
 
         self.client = pymongo.MongoClient([self.mongodb_ip_ + ":" + self.port_])
+
         """
             查询和存储基本信息表
         """
@@ -155,7 +156,20 @@ class App(QWidget):  # 继承自 QWidget类
         self.information_ancient_event_temp2 = self.client[self.mongodb_name_][self.col_event_info_temp2_]
         self.information_ancient_event_log = self.client[self.mongodb_name_logs_][self.col_event_info_logs_]
 
+        """
+            配置搜索引擎地址
+        """
+        self.client2 = pymongo.MongoClient(host="192.168.1.115",
+                                           port=27017,
+                                           username="anyread",
+                                           password="helloworld")
+        self.information_ancient_base_gold = self.client2["earth_gis"]["Information_ancient_base"]
+
         self.setup_tab_labels()  # 设置表头
+        self.labels_auth_config = json.load(open("labels_auth_config.json", "r", encoding="utf-8"))
+        self.base_info_labels_auth_config = self.labels_auth_config["base_info_table"]
+        self.rel_info_labels_auth_config = self.labels_auth_config["rel_info_table"]
+        self.event_info_labels_auth_config = self.labels_auth_config["event_info_table"]
 
         self.init_ui()
 
@@ -291,8 +305,8 @@ class App(QWidget):  # 继承自 QWidget类
             "effective_status": "删除状态\n(1:有效 0:删除)",
             "person_1_name": "人物1姓名",
             "rel_name": "关系名称",
-            "person_2_name": "人物2姓名",
             "rel_direction": "关系方向id",
+            "person_2_name": "人物2姓名",
             "rel_category_id": "关系类别id",
             "person_1_id": "人物1id",
             "rel_id": "关系id",
@@ -378,22 +392,34 @@ class App(QWidget):  # 继承自 QWidget类
             针对基本信息表的
         :return:
         """
-        self.table.item(0, 1).setFlags(self.table.item(0, 1).flags() ^ Qt.ItemIsEditable)  # 设置person_id 对应的值不可被编辑
-        self.table.item(0, 1).setBackground(QtGui.QColor(220, 220, 220))  # 设置person_id 对应的值的底色
-        check_status_row = len(self.labels_en2zh_base_info) - 1
-        self.table.item(check_status_row, 1).setFlags(
-            self.table.item(check_status_row, 1).flags() ^ Qt.ItemIsEditable)  # 设置check_status 对应的值不可被编辑
-        self.table.item(check_status_row, 1).setBackground(QtGui.QColor(220, 220, 220))  # 设置check_status 对应的值的底色
+        # self.table.item(0, 1).setFlags(self.table.item(0, 1).flags() ^ Qt.ItemIsEditable)  # 设置person_id 对应的值不可被编辑
+        # self.table.item(0, 1).setBackground(QtGui.QColor(220, 220, 220))  # 设置person_id 对应的值的底色
+        # check_status_row = len(self.labels_en2zh_base_info) - 1
+        # self.table.item(check_status_row, 1).setFlags(
+        #     self.table.item(check_status_row, 1).flags() ^ Qt.ItemIsEditable)  # 设置check_status 对应的值不可被编辑
+        # self.table.item(check_status_row, 1).setBackground(QtGui.QColor(220, 220, 220))  # 设置check_status 对应的值的底色
+        #
+        # author_row = len(self.labels_en2zh_base_info) - 3
+        # self.table.item(author_row, 1).setFlags(
+        #     self.table.item(author_row, 1).flags() ^ Qt.ItemIsEditable)  # 设置author 对应的值不可被编辑
+        # self.table.item(author_row, 1).setBackground(QtGui.QColor(220, 220, 220))  # 设置author 对应的值的底色
+        #
+        # up_time_row = len(self.labels_en2zh_base_info) - 4
+        # self.table.item(up_time_row, 1).setFlags(
+        #     self.table.item(up_time_row, 1).flags() ^ Qt.ItemIsEditable)  # 设置up_time 对应的值不可被编辑
+        # self.table.item(up_time_row, 1).setBackground(QtGui.QColor(220, 220, 220))  # 设置up_time 对应的值的底色
 
-        author_row = len(self.labels_en2zh_base_info) - 3
-        self.table.item(author_row, 1).setFlags(
-            self.table.item(author_row, 1).flags() ^ Qt.ItemIsEditable)  # 设置author 对应的值不可被编辑
-        self.table.item(author_row, 1).setBackground(QtGui.QColor(220, 220, 220))  # 设置author 对应的值的底色
-
-        up_time_row = len(self.labels_en2zh_base_info) - 4
-        self.table.item(up_time_row, 1).setFlags(
-            self.table.item(up_time_row, 1).flags() ^ Qt.ItemIsEditable)  # 设置up_time 对应的值不可被编辑
-        self.table.item(up_time_row, 1).setBackground(QtGui.QColor(220, 220, 220))  # 设置up_time 对应的值的底色
+        """
+            根据字段权限配置表配置字段编辑权限
+            1:可编辑
+            0:禁止编辑
+        """
+        for k, v in self.base_info_labels_auth_config.items():
+            if not v:
+                self.table.item(self.labels_en2id_base_info[k], 1).setFlags(
+                    self.table.item(self.labels_en2id_base_info[k], 1).flags() ^ Qt.ItemIsEditable)  # 设置字段对应的值不可被编辑
+                self.table.item(self.labels_en2id_base_info[k],
+                                1).setBackground(QtGui.QColor(220, 220, 220))  # 设置字段对应的值的底色
 
     def create_base_info_table(self):
         """
@@ -426,9 +452,18 @@ class App(QWidget):  # 继承自 QWidget类
         """
         count_row = 0
         for k, v in data.items():
-            self.table.setItem(count_row, 0, QTableWidgetItem(str(k)))
-            # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # 禁止编辑
-            self.table.setItem(count_row, 1, QTableWidgetItem(str(v)))
+
+            if k == "effective_status":
+                self.table.setItem(count_row, 0, QTableWidgetItem(str(k)))
+                effective_status_combo = ExtendedComboBox()
+                effective_status_combo.resize(100, 50)
+                effective_status_combo.addItems(["0", "1"])  # 删除状态\n(1:有效 0:删除)
+                effective_status_combo.setCurrentText(str(v))
+                self.table.setCellWidget(count_row, 1, effective_status_combo)
+            else:
+                self.table.setItem(count_row, 0, QTableWidgetItem(str(k)))
+                # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # 禁止编辑
+                self.table.setItem(count_row, 1, QTableWidgetItem(str(v)))
             count_row += 1
         # 禁止全局编辑
         # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -478,7 +513,10 @@ class App(QWidget):  # 继承自 QWidget类
             if k == "check_status":
                 temp_dict[k] = str(int(self.check_status_) + 1)
                 continue
-            temp_dict[k] = self.table.item(row, 1).text()
+            elif k == "effective_status":
+                temp_dict[k] = self.table.cellWidget(row, 1).currentText()
+            else:
+                temp_dict[k] = self.table.item(row, 1).text()
             row += 1
         return temp_dict
 
@@ -490,9 +528,17 @@ class App(QWidget):  # 继承自 QWidget类
         :param text: 当前关系名称
         :return:
         """
-        print("row:" + str(row) + ", col:" + str(col) + ", current text:" + self.rel_name2id[text])
-        # self.comboBox_2.setCurrentText(text)
         self.rel_table.setItem(row, col, QTableWidgetItem(self.rel_name2id[text]))
+        print("row:" + str(row) + ", col:" + str(col) + ", rel_id 更新为:" + self.rel_name2id[text])
+
+        # self.updateCombox(combo1)
+
+        # def updateCombox(self, combo1):
+        #     # text = combo1.currentText()
+        #     combo1.blockSignals(True)
+        #     # combo2.blockSignals(True)
+        #     # combo1.clear()
+        #     # combo2.clear()
 
     def create_rel_info_table(self,):
         """
@@ -504,19 +550,102 @@ class App(QWidget):  # 继承自 QWidget类
         # Todo 优化1 设置水平方向的表头标签
         horizontal_header_labels = list(self.labels_en2zh_rel_info.values())
         self.rel_table.setColumnCount(len(self.labels_en2zh_rel_info))
-        print(horizontal_header_labels)
+        # print(horizontal_header_labels)
         self.rel_table.setHorizontalHeaderLabels(horizontal_header_labels)
         # TODO 优化 6 表格头的显示与隐藏
         # self.table.verticalHeader().setVisible(False)
         self.rel_table.horizontalHeader().setVisible(True)
         self.rel_table.setItemDelegateForRow(0, EmptyDelegate(self))  # 设置第0行(english labels行)不可编辑
 
-        for col_idx in [0, ]:  # 设置指定的列不可被编辑
-            self.table.setItemDelegateForColumn(col_idx, EmptyDelegate(self))  # 设置第col_idx列不可编辑
+        """
+           根据字段权限配置表配置字段编辑权限
+           1:可编辑
+           0:禁止编辑
+        """
+        # self.rel_table.setItemDelegateForColumn(0, EmptyDelegate(self))  # 设置0列不可编辑
+        for k, v in self.rel_info_labels_auth_config.items():
+            if not v:
+                col_idx = self.labels_en2id_rel_info[k]
+                self.rel_table.setItemDelegateForColumn(col_idx,
+                                                        EmptyDelegate(self))  # 设置第col_idx列不可编辑
 
         self.rel_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # 所有列自动填充满屏
 
         # self.show_rel_info_in_table(data_list)
+
+    @staticmethod
+    def encode_rel_direction(rel_dir_id):
+        """
+        1:"==>",
+        2:"<==",
+        3:"<==>"
+        :return:
+        """
+        if rel_dir_id == "1":
+            rel_dir_id = "==>"
+        elif rel_dir_id == "2":
+            rel_dir_id = "<=="
+        else:
+            rel_dir_id = "<==>"
+
+        return rel_dir_id
+
+    @staticmethod
+    def decode_rel_direction(rel_dir):
+        """
+        "==>":1,
+        "<==":2,
+        "<==>":3
+        :return:
+        """
+        if rel_dir == "==>":
+            rel_dir = "1"
+        elif rel_dir == "<==":
+            rel_dir = "2"
+        else:
+            rel_dir = "3"
+
+        return rel_dir
+
+    def rel_table_double_clicked(self, index):
+        table_row = index.row()
+        table_column = index.column()
+        current_item = self.rel_table.item(table_row, table_column)
+        curr_text = current_item.text()
+        # current_widget = self.rel_table.cellWidget(table_row, table_column)
+        # print("Tips: rel_table_double_clicked !\n"
+        #       + "rel_table_row:" + str(table_row) + ", "
+        #       + "rel_table_column:" + str(table_column))
+
+        if table_column == self.labels_en2id_rel_info["person_1_name"]:
+            print("person_1_name: " + curr_text + " 被双击！")
+            person_1_id = self.rel_table.item(table_row, self.labels_en2id_rel_info["person_1_id"]).text()
+            print("person_1_id: " + person_1_id)
+            result = \
+                self.information_ancient_base_gold.find_one({"person_id": person_1_id}, {"_id": 0})
+            if result:
+                result_label2en = {self.labels_en2zh_base_info[k]: v for k, v in result.items()}  # key值汉化
+                result_format = json.dumps(result_label2en, ensure_ascii=False, indent=4)
+
+                QMessageBox.information(self, "Tips", result_format, QMessageBox.Ok)
+            else:
+                QMessageBox.question(self, "Warning", "Sorry!　该人物暂时不在信息库中",
+                                     QMessageBox.Ok)
+
+        if table_column == self.labels_en2id_rel_info["person_2_name"]:
+            print("person_2_name: " + curr_text + " 被双击！")
+            person_2_id = self.rel_table.item(table_row, self.labels_en2id_rel_info["person_2_id"]).text()
+            print("person_2_id: " + person_2_id)
+            result = \
+                self.information_ancient_base_gold.find_one({"person_id": person_2_id}, {"_id": 0})
+            if result:
+                result_label2en = {self.labels_en2zh_base_info[k]: v for k, v in result.items()}  # key值汉化
+                result_format = json.dumps(result_label2en, ensure_ascii=False, indent=4)
+                QMessageBox.information(self, "Tips", result_format,
+                                        QMessageBox.Ok)
+            else:
+                QMessageBox.question(self, "Warning", "Sorry!　该人物暂时不在信息库中",
+                                     QMessageBox.Ok)
 
     def show_rel_info_in_table(self, data_list):
         """
@@ -542,8 +671,7 @@ class App(QWidget):  # 继承自 QWidget类
             self.rel_table.setRowCount(len(data_list_u) + 1)  # 行自增
             self.rel_table.setColumnCount(len(self.labels_en2zh_rel_info))
 
-            count_row = 0
-            for data in data_list_u:
+            for count_row, data in enumerate(data_list_u):
                 count_col = 0
                 for k, v in data.items():
                     if count_row == 0:
@@ -556,15 +684,19 @@ class App(QWidget):  # 继承自 QWidget类
                             """
                                 添加下拉选项框，可实现模糊查询
                             """
-                            rel_name_combo_1 = ExtendedComboBox()
+                            rel_name_combo_1 = ExtendedComboBox(self.rel_table)
                             rel_name_combo_1.addItems(self.all_rel_list)
                             rel_name_combo_1.setCurrentText(str(v))
+                            # rel_name_combo_1.activated.connect(lambda:
+                            #                                    self.update_rel_id(1,
+                            #                                                       self.labels_en2id_rel_info["rel_id"],
+                            #                                                       rel_name_combo_1.currentText()))
                             self.rel_table.setCellWidget(1, count_col, rel_name_combo_1)
 
                         elif k == "rel_direction":
                             rel_direction_combo = ExtendedComboBox()
-                            rel_direction_combo.addItems(["1", "2", "3"])  # 关系方向
-                            rel_direction_combo.setCurrentText(str(v))
+                            rel_direction_combo.addItems(["==>", "<==", "<==>"])  # 关系方向
+                            rel_direction_combo.setCurrentText(self.encode_rel_direction(str(v)))
                             self.rel_table.setCellWidget(1, count_col, rel_direction_combo)
 
                         elif k == "effective_status":
@@ -577,17 +709,36 @@ class App(QWidget):  # 继承自 QWidget类
                             new_item = QTableWidgetItem(str(v))
                             # new_item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
                             self.rel_table.setItem(1, count_col, new_item)
+
+                        """
+                            填充不可编辑项的底色
+                        """
+                        if not self.rel_info_labels_auth_config[k]:
+                            self.rel_table.item(count_row + 1, count_col
+                                            ).setBackground(QtGui.QColor(220, 220, 220))  # 设置英文列头对应的底色
+
                     else:
                         if k == "rel_name":
-                            rel_name_combo_2 = ExtendedComboBox()
+                            rel_name_combo_2 = ExtendedComboBox(self.rel_table)
+                            # rel_name_combo_2.setProperty("row", count_row + 1)
+                            # rel_name_combo_2.setProperty("col", count_col)
+
                             rel_name_combo_2.addItems(self.all_rel_list)
                             rel_name_combo_2.setCurrentText(str(v))
+                            # rel_name_combo_2.activated.connect(lambda: self.update_rel_id(count_row + 1,
+                            #                                                       self.labels_en2id_rel_info["rel_id"],
+                            #                                                       rel_name_combo_2.currentText()))
+                            # rel_name_row = count_row + 1
+                            # rel_id_col = self.labels_en2id_rel_info["rel_id"]
+                            # rel_name_combo_2.currentIndexChanged.connect(
+                            #     lambda: self.update_rel_id(rel_name_row, rel_id_col, rel_name_combo_2.currentText()))
+
                             self.rel_table.setCellWidget(count_row + 1, count_col, rel_name_combo_2)
 
                         elif k == "rel_direction":
                             rel_direction_combo2 = ExtendedComboBox()
-                            rel_direction_combo2.addItems(["1", "2", "3"])
-                            rel_direction_combo2.setCurrentText(str(v))
+                            rel_direction_combo2.addItems(["==>", "<==", "<==>"])
+                            rel_direction_combo2.setCurrentText(self.encode_rel_direction(str(v)))
                             self.rel_table.setCellWidget(count_row + 1, count_col, rel_direction_combo2)
 
                         elif k == "effective_status":
@@ -599,8 +750,16 @@ class App(QWidget):  # 继承自 QWidget类
                         else:
                             self.rel_table.setItem(count_row + 1, count_col, QTableWidgetItem(str(v)))
 
+                        """
+                            填充不可编辑项的底色
+                        """
+                        if not self.rel_info_labels_auth_config[k]:
+                            self.rel_table.item(count_row + 1, count_col
+                                                ).setBackground(QtGui.QColor(220, 220, 220))  # 设置对应的底色
+
                     count_col += 1
-                count_row += 1
+
+        self.rel_table.doubleClicked.connect(self.rel_table_double_clicked)
 
     def get_rel_info_in_table(self):
         """
@@ -616,18 +775,34 @@ class App(QWidget):  # 继承自 QWidget类
                 if row_idx == 0:
                     continue
                 temp = {}
+
+                rel_id_raw = self.rel_table.item(row_idx, self.labels_en2id_rel_info["rel_id"]).text()
+                rel_id_now = self.rel_name2id[self.rel_table.cellWidget(row_idx,
+                                                                        self.labels_en2id_rel_info["rel_name"]
+                                                                        ).currentText()]
                 for col_idx in range(self.rel_table.columnCount()):
-                    print(self.labels_en2id_rel_info["effective_status"])
-                    print(self.labels_en2id_rel_info["rel_name"])
-                    print(self.labels_en2id_rel_info["rel_category_id"])
                     if col_idx == self.labels_en2id_rel_info["effective_status"] or \
-                            col_idx == self.labels_en2id_rel_info["rel_name"] \
-                            or col_idx == self.labels_en2id_rel_info["rel_direction"]:    # 获取QComboBox中的信息
+                            col_idx == self.labels_en2id_rel_info["rel_name"] :    # 获取QComboBox中的信息
 
                         temp[self.rel_table.item(0, col_idx).text()] = \
                             self.rel_table.cellWidget(row_idx, col_idx).currentText()
+
+                    elif col_idx == self.labels_en2id_rel_info["rel_direction"]:
+                        """
+                            解码和更新关系方向
+                        """
+                        temp[self.rel_table.item(0, col_idx).text()] = \
+                            self.decode_rel_direction(self.rel_table.cellWidget(row_idx, col_idx).currentText())
+
+                    elif col_idx == self.labels_en2id_rel_info["rel_id"] and rel_id_raw != rel_id_now:
+                        """
+                            更新关系id
+                        """
+                        temp[self.rel_table.item(0, col_idx).text()] = rel_id_now
+
                     else:
                         temp[self.rel_table.item(0, col_idx).text()] = self.rel_table.item(row_idx, col_idx).text()
+
                 temp_list.append(temp)
 
         return temp_list
@@ -647,7 +822,19 @@ class App(QWidget):  # 继承自 QWidget类
         # self.table.verticalHeader().setVisible(False)
         self.event_table.horizontalHeader().setVisible(True)
 
-        self.event_table.setItemDelegateForColumn(0, EmptyDelegate(self))  # 设置第一列不可编辑
+        self.event_table.setItemDelegateForRow(0, EmptyDelegate(self))  # 设置第0行(english labels行)不可编辑
+        # self.event_table.setItemDelegateForColumn(0, EmptyDelegate(self))  # 设置第一列不可编辑
+        """
+           根据字段权限配置表配置字段编辑权限
+           1:可编辑
+           0:禁止编辑
+        """
+        for k, v in self.event_info_labels_auth_config.items():
+            if not v:
+                col_idx = self.labels_en2id_event_info[k]
+                self.event_table.setItemDelegateForColumn(col_idx,
+                                                          EmptyDelegate(self))  # 设置第col_idx列不可编辑
+
         self.event_table.horizontalHeader().setSectionResizeMode(self.labels_en2id_event_info["place"],
                                                                  QHeaderView.ResizeToContents)  # place列自适应内容
         self.event_table.horizontalHeader().setSectionResizeMode(self.labels_en2id_event_info["abstract"],
@@ -684,25 +871,48 @@ class App(QWidget):  # 继承自 QWidget类
                     if count_row == 0:
                         self.event_table.setItem(0, count_col, QTableWidgetItem(str(k)))
                         # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # 禁止编辑
+                        self.event_table.setRowHeight(1, 65)  # 设置行高为65
                         if k == "event_weight":
                             event_weight_combo = ExtendedComboBox()
                             event_weight_combo.addItems(["1", "2", "3", "4", "5"])  # event_weight
                             event_weight_combo.setCurrentText(str(v))
                             self.event_table.setCellWidget(1, count_col, event_weight_combo)
-                            self.event_table.setRowHeight(1, 65)  # 设置行高为10
+
+                        elif k == "effective_status":
+                            effective_status_combo = ExtendedComboBox()
+                            effective_status_combo.addItems(["0", "1"])  # 删除状态\n(1:有效 0:删除)
+                            effective_status_combo.setCurrentText(str(v))
+                            self.event_table.setCellWidget(1, count_col, effective_status_combo)
                         else:
                             self.event_table.setItem(1, count_col, QTableWidgetItem(str(v)))
-                            self.event_table.setRowHeight(1, 65)  # 设置行高为10
+
+                        """
+                            填充不可编辑项的底色
+                        """
+                        if not self.event_info_labels_auth_config[k]:
+                            self.event_table.item(count_row + 1, count_col
+                                                ).setBackground(QtGui.QColor(220, 220, 220))  # 设置对应的底色
                     else:
+                        self.event_table.setRowHeight(count_row + 1, 65)  # 设置行高为65
                         if k == "event_weight":
                             event_weight_combo = ExtendedComboBox()
                             event_weight_combo.addItems(["1", "2", "3", "4", "5"])  # event_weight
                             event_weight_combo.setCurrentText(str(v))
                             self.event_table.setCellWidget(count_row + 1, count_col, event_weight_combo)
-                            self.event_table.setRowHeight(1, 65)  # 设置行高为10
+                        elif k == "effective_status":
+                            effective_status_combo = ExtendedComboBox()
+                            effective_status_combo.addItems(["0", "1"])  # 删除状态\n(1:有效 0:删除)
+                            effective_status_combo.setCurrentText(str(v))
+                            self.event_table.setCellWidget(count_row + 1, count_col, effective_status_combo)
                         else:
                             self.event_table.setItem(count_row + 1, count_col, QTableWidgetItem(str(v)))
-                            self.event_table.setRowHeight(count_row + 1, 65)
+
+                        """
+                            填充不可编辑项的底色
+                        """
+                        if not self.event_info_labels_auth_config[k]:
+                            self.event_table.item(count_row + 1, count_col
+                                                  ).setBackground(QtGui.QColor(220, 220, 220))  # 设置对应的底色
                     count_col += 1
                 count_row += 1
 
@@ -721,7 +931,8 @@ class App(QWidget):  # 继承自 QWidget类
                     continue
                 temp = {}
                 for col_idx in range(self.event_table.columnCount()):
-                    if col_idx == self.labels_en2id_event_info["event_weight"]:    # 获取QComboBox中的信息
+                    if col_idx == self.labels_en2id_event_info["event_weight"] or \
+                            col_idx == self.labels_en2id_event_info["effective_status"]:    # 获取QComboBox中的信息
                         temp[self.event_table.item(0, col_idx).text()] = \
                             self.event_table.cellWidget(row_idx, col_idx).currentText()
                         pass
@@ -1020,6 +1231,7 @@ class App(QWidget):  # 继承自 QWidget类
             self.create_rel_info_table()
             if current_person_id in self.my_rel_info_order_dict:
                 self.show_rel_info_in_table(self.my_rel_info_order_dict[current_person_id])
+                # print(json.dumps(self.my_rel_info_order_dict[current_person_id], ensure_ascii=False, indent=4))
                 # json.dump(self.my_rel_info_order_dict, rel_file, ensure_ascii=False, indent=4)
                 print("current_person_id:" + current_person_id + "存在self.my_rel_info_order_dict")
             else:
@@ -1325,13 +1537,16 @@ class App(QWidget):  # 继承自 QWidget类
 
 if __name__ == '__main__':
     Job_num = ""
-    Mongodb_ip = "192.168.1.23"
+    Mongodb_ip = "192.168.1.13"
     Port = "27017"
-    Mongodb_name = "earth_gis"
-    Col_base_info_temp1 = "Information_ancient_base_temp1"
+    # Mongodb_name = "earth_gis"
+    # Col_base_info_temp1 = "Information_ancient_base_temp1"
+    Mongodb_name = "person_basic_relathion_delete_post"
+    Col_base_info_temp1 = "person_nlp_self_check_base"
     Col_base_info_temp2 = "Information_ancient_base_temp2"
     Col_base_info_final = "Information_ancient_base"
-    Col_rel_info_temp1 = "Information_ancient_relation_temp1"
+    # Col_rel_info_temp1 = "Information_ancient_relation_temp1"
+    Col_rel_info_temp1 = "person_nlp_self_check_rel"
     Col_rel_info_temp2 = "Information_ancient_relation_temp2"
     Col_rel_info_final = "Information_ancient_relation"
     Col_event_info_temp1 = "Information_ancient_event_temp1"

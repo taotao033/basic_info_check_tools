@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import QCompleter, QComboBox
 class ExtendedComboBox(QComboBox):
     def __init__(self, parent=None):
         super(ExtendedComboBox, self).__init__(parent)
-
         self.setFocusPolicy(Qt.StrongFocus)
         self.setEditable(True)
 
@@ -31,6 +30,7 @@ class ExtendedComboBox(QComboBox):
             index = self.findText(text)
             self.setCurrentIndex(index)
             self.activated[str].emit(self.itemText(index))
+            print("111111")
 
     # on model change, update the models of the filter and completer as well
     def setModel(self, model):
