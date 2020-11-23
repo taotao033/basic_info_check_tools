@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QHeaderView, QTableWidgetItem, QVBoxLayout, \
     QHBoxLayout, QPushButton, QDesktopWidget, QLabel, QLineEdit, QAbstractItemView, \
-    QItemDelegate, QAction, QFontDialog, QMessageBox
+    QItemDelegate, QAction, QFontDialog, QMessageBox, QComboBox
 from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtGui import QIcon
 import pymongo
@@ -225,6 +225,21 @@ class App_Login(QWidget):
         self.col_event_info_logs_layout.addWidget(self.col_event_info_logs_text)
         self.col_event_info_logs_layout.setSpacing(19)  # 设置控件间距
 
+        """
+            新增校对模式选择：
+            １、基本信息+关系
+            ２、基本信息+生平
+            ３、基本信息+关系+生平
+        """
+        self.check_mode_layout = QHBoxLayout()
+        self.check_mode_label = QLabel('校对模式选择:', self)
+        # self.check_mode_label.setAlignment(Qt.AlignLeft)
+        self.cb = QComboBox()
+        self.cb.addItems(["基本信息+关系", "基本信息+生平", "基本信息+关系+生平"])
+        self.check_mode_layout.addWidget(self.check_mode_label)
+        self.check_mode_layout.addWidget(self.cb)
+        # self.cb.currentIndexChanged.connect(self.selectionchange)
+
         self.button_zh2en = QPushButton('中文/English', self)
         self.button_zh2en.setFixedSize(80, 30)
         self.button_zh2en.clicked.connect(self.button_zh2en_on_click)
@@ -259,6 +274,7 @@ class App_Login(QWidget):
         self.main_layout_login.addLayout(self.col_base_info_logs_layout)
         self.main_layout_login.addLayout(self.col_rel_info_logs_layout)
         self.main_layout_login.addLayout(self.col_event_info_logs_layout)
+        self.main_layout_login.addLayout(self.check_mode_layout)
         self.main_layout_login.addLayout(self.bottom_layout)
         self.setLayout(self.main_layout_login)
         self.show()
@@ -405,6 +421,9 @@ class App_Login(QWidget):
 
                 # main_app.connect_db()  # 连接数据库
                 self.main_win.show()  # 显示主窗口
+                self.main_win.config_app_data_source_info(check_mode=self.cb.currentText())  # 数据源配置
+                print("当前校对模式:" + " " + self.cb.currentText())
+                self.main_win.init_ui()
 
                 self.close()  # 关闭登录窗口
 

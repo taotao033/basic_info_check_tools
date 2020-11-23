@@ -30,7 +30,6 @@ class ExtendedComboBox(QComboBox):
             index = self.findText(text)
             self.setCurrentIndex(index)
             self.activated[str].emit(self.itemText(index))
-            print("111111")
 
     # on model change, update the models of the filter and completer as well
     def setModel(self, model):

@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QHeaderView, QTableWidgetItem, QVBoxLayout, \
     QHBoxLayout, QPushButton, QDesktopWidget, QLabel, QLineEdit, QAbstractItemView, \
     QItemDelegate, QAction, QFontDialog, QMessageBox,  QComboBox
-from PyQt5.QtGui import QIcon, QBrush, QColor
+from PyQt5.QtGui import QIcon, QBrush, QColor, QFont
 from PyQt5 import QtGui
 from PyQt5.QtCore import pyqtSlot, Qt, pyqtBoundSignal
 import pymongo
@@ -125,9 +125,11 @@ class App(QWidget):  # 继承自 QWidget类
         self.col_base_info_logs_ = col_base_info_logs
         self.col_rel_info_logs_ = col_rel_info_logs
         self.col_event_info_logs_ = col_event_info_logs
-
         self.searcher = search_engine
+        self.check_mode = "基本信息+关系+生平"
 
+    def config_app_data_source_info(self, check_mode="基本信息+关系+生平"):
+        self.check_mode = check_mode  # 校对模式选择
         self.client = pymongo.MongoClient([self.mongodb_ip_ + ":" + self.port_])
 
         """
@@ -159,11 +161,15 @@ class App(QWidget):  # 继承自 QWidget类
         """
             配置搜索引擎地址
         """
-        self.client2 = pymongo.MongoClient(host="192.168.1.115",
-                                           port=27017,
-                                           username="anyread",
-                                           password="helloworld")
-        self.information_ancient_base_gold = self.client2["earth_gis"]["Information_ancient_base"]
+        # self.client2 = pymongo.MongoClient(host="192.168.1.115",
+        #                                    port=27017,
+        #                                    username="anyread",
+        #                                    password="helloworld")
+        # self.information_ancient_base_gold = self.client2["earth_gis"]["Information_ancient_base"]
+
+        self.client2 = pymongo.MongoClient(host="192.168.1.13",
+                                           port=27017)
+        self.information_ancient_base_gold = self.client2["person_basic_relathion_delete_post"]["nlp_extract_base_check_full"]
 
         self.setup_tab_labels()  # 设置表头
         self.labels_auth_config = json.load(open("labels_auth_config.json", "r", encoding="utf-8"))
@@ -171,7 +177,7 @@ class App(QWidget):  # 继承自 QWidget类
         self.rel_info_labels_auth_config = self.labels_auth_config["rel_info_table"]
         self.event_info_labels_auth_config = self.labels_auth_config["event_info_table"]
 
-        self.init_ui()
+        # self.init_ui()
 
     def center(self, ):
         fg = self.frameGeometry()
@@ -189,6 +195,8 @@ class App(QWidget):  # 继承自 QWidget类
 
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
+        # self.setWindowOpacity(0.9)  # 设置窗口透明度
+        # self.setStyleSheet("background-image: url(./images/snow.jpg); background-attachment: fixed")
 
         # 居中窗口
         # qr = self.frameGeometry()
@@ -216,20 +224,22 @@ class App(QWidget):  # 继承自 QWidget类
         """
             切换为 基本信息/关系/生平 按钮
         """
-        self.trans_tables_button = QPushButton('基本信息/关系/生平', self)
-        self.trans_tables_button.setToolTip("点击切换")
-        self.trans_tables_button.setFixedSize(150, 30)
-        self.trans_tables_button.clicked.connect(self.trans_tables_button_on_click)
-        self.button_layout.addWidget(self.trans_tables_button)
-
         self.button1 = QPushButton('上一页', self)
         self.button1.setFixedSize(90, 30)
         self.button1.clicked.connect(self.button1_on_click)
         self.button_layout.addWidget(self.button1)
         self.button1.setEnabled(False)
 
-        self.button2 = QPushButton('下一页', self)
-        self.button2.setToolTip("点击后，自动保存当前数据")
+        self.trans_tables_button = QPushButton('基本信息/关系/生平(F1)', self)
+        self.trans_tables_button.setToolTip("点击切换(F1)")
+        self.trans_tables_button.setShortcut('f1')  # 快捷切换
+        self.trans_tables_button.setFixedSize(150, 30)
+        self.trans_tables_button.clicked.connect(self.trans_tables_button_on_click)
+        self.button_layout.addWidget(self.trans_tables_button)
+
+        self.button2 = QPushButton('下一页(F2)', self)
+        self.button2.setToolTip("点击后，自动保存当前数据(F2)")
+        self.button2.setShortcut('f2')   # 快捷键
         self.button2.setFixedSize(90, 30)
         self.button_layout.addWidget(self.button2)
         self.button2.clicked.connect(self.button2_on_click)
@@ -336,7 +346,7 @@ class App(QWidget):  # 继承自 QWidget类
 
     def query_base_info(self):
         self.find_one_base_info_in_temp1 = \
-            self.information_ancient_base_temp1.find_one({"check_status": self.check_status_}, {"_id": 0})
+            self.information_ancient_base_temp1.find_one({"check_status": self.check_status_}, {"_id": 0, "new_add": 0})
         if self.find_one_base_info_in_temp1:
 
             self.person_id = self.find_one_base_info_in_temp1["person_id"]
@@ -458,6 +468,7 @@ class App(QWidget):  # 继承自 QWidget类
                 effective_status_combo = ExtendedComboBox()
                 effective_status_combo.resize(100, 50)
                 effective_status_combo.addItems(["0", "1"])  # 删除状态\n(1:有效 0:删除)
+                effective_status_combo.setStyleSheet("QComboBox {background:#FFFFFF;color:#FF0000;font-size:16px}")
                 effective_status_combo.setCurrentText(str(v))
                 self.table.setCellWidget(count_row, 1, effective_status_combo)
             else:
@@ -686,6 +697,8 @@ class App(QWidget):  # 继承自 QWidget类
                             """
                             rel_name_combo_1 = ExtendedComboBox(self.rel_table)
                             rel_name_combo_1.addItems(self.all_rel_list)
+                            rel_name_combo_1.setStyleSheet("QComboBox {background:#FFFFFF;"
+                                                           "color:#FF0000;font-size:16px \"Times\"}")
                             rel_name_combo_1.setCurrentText(str(v))
                             # rel_name_combo_1.activated.connect(lambda:
                             #                                    self.update_rel_id(1,
@@ -696,14 +709,26 @@ class App(QWidget):  # 继承自 QWidget类
                         elif k == "rel_direction":
                             rel_direction_combo = ExtendedComboBox()
                             rel_direction_combo.addItems(["==>", "<==", "<==>"])  # 关系方向
+                            rel_direction_combo.setStyleSheet("QComboBox {background:#FFFFFF;"
+                                                              "color:#FF0000;"
+                                                              "font-size:16px}")
                             rel_direction_combo.setCurrentText(self.encode_rel_direction(str(v)))
                             self.rel_table.setCellWidget(1, count_col, rel_direction_combo)
 
                         elif k == "effective_status":
                             effective_status_combo = ExtendedComboBox()
                             effective_status_combo.addItems(["0", "1"])  # 删除状态\n(1:有效 0:删除)
+                            effective_status_combo.setStyleSheet("QComboBox {background:#FFFFFF;"
+                                                                 "color:#FF0000;font-size:16px}")
                             effective_status_combo.setCurrentText(str(v))
                             self.rel_table.setCellWidget(1, count_col, effective_status_combo)
+
+                        elif k == "person_1_name" or k == "person_2_name":
+                            new_item = QTableWidgetItem(str(v))
+                            new_item.setFont(QFont('Times', 16))   # 设置字体（字体，字号）
+                            new_item.setForeground(QBrush(QColor(0, 0, 255)))   # 设置字体为蓝色
+                            # new_item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+                            self.rel_table.setItem(1, count_col, new_item)
 
                         else:
                             new_item = QTableWidgetItem(str(v))
@@ -724,6 +749,8 @@ class App(QWidget):  # 继承自 QWidget类
                             # rel_name_combo_2.setProperty("col", count_col)
 
                             rel_name_combo_2.addItems(self.all_rel_list)
+                            rel_name_combo_2.setStyleSheet("QComboBox {background:#FFFFFF;"
+                                                           "color:#FF0000;font-size:16px \"Times\"}")
                             rel_name_combo_2.setCurrentText(str(v))
                             # rel_name_combo_2.activated.connect(lambda: self.update_rel_id(count_row + 1,
                             #                                                       self.labels_en2id_rel_info["rel_id"],
@@ -738,14 +765,26 @@ class App(QWidget):  # 继承自 QWidget类
                         elif k == "rel_direction":
                             rel_direction_combo2 = ExtendedComboBox()
                             rel_direction_combo2.addItems(["==>", "<==", "<==>"])
+                            rel_direction_combo2.setStyleSheet("QComboBox {background:#FFFFFF;"
+                                                               "color:#FF0000;"
+                                                               "font-size:16px}")
                             rel_direction_combo2.setCurrentText(self.encode_rel_direction(str(v)))
                             self.rel_table.setCellWidget(count_row + 1, count_col, rel_direction_combo2)
 
                         elif k == "effective_status":
                             effective_status_combo2 = ExtendedComboBox()
                             effective_status_combo2.addItems(["0", "1"])  # 删除状态\n(1:有效 0:删除)
+                            effective_status_combo2.setStyleSheet("QComboBox {background:#FFFFFF;"
+                                                                  "color:#FF0000;font-size:16px}")
                             effective_status_combo2.setCurrentText(str(v))
                             self.rel_table.setCellWidget(count_row + 1, count_col, effective_status_combo2)
+
+                        elif k == "person_1_name" or k == "person_2_name":
+                            new_item = QTableWidgetItem(str(v))
+                            new_item.setFont(QFont('Times', 16))   # 设置字体（字体，字号）
+                            new_item.setForeground(QBrush(QColor(0, 0, 255)))   # 设置字体为蓝色
+                            # new_item.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+                            self.rel_table.setItem(count_row + 1, count_col, new_item)
 
                         else:
                             self.rel_table.setItem(count_row + 1, count_col, QTableWidgetItem(str(v)))
@@ -782,7 +821,7 @@ class App(QWidget):  # 继承自 QWidget类
                                                                         ).currentText()]
                 for col_idx in range(self.rel_table.columnCount()):
                     if col_idx == self.labels_en2id_rel_info["effective_status"] or \
-                            col_idx == self.labels_en2id_rel_info["rel_name"] :    # 获取QComboBox中的信息
+                            col_idx == self.labels_en2id_rel_info["rel_name"]:    # 获取QComboBox中的信息
 
                         temp[self.rel_table.item(0, col_idx).text()] = \
                             self.rel_table.cellWidget(row_idx, col_idx).currentText()
@@ -1221,88 +1260,200 @@ class App(QWidget):  # 继承自 QWidget类
         """
         current_person_id = self.table.item(0, 1).text()
         print("current_person_id: " + current_person_id)
-        if self.FLAG_Current_Table == "base_info":
-            print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
-            print("当前表：" + self.FLAG_Current_Table)
-            print("保存临时回话（base_info）")
 
-            self.my_order_dict[current_person_id] = self.get_base_info_in_table()  # 获取当前基本信息表格中数据，更新self.my_order_dict
+        if self.check_mode == "基本信息+关系":    # 只在base_info和rel_info之间切换
+            if self.FLAG_Current_Table == "base_info":
+                print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
+                print("当前表：" + self.FLAG_Current_Table)
+                print("保存临时回话（base_info）")
 
-            self.create_rel_info_table()
-            if current_person_id in self.my_rel_info_order_dict:
-                self.show_rel_info_in_table(self.my_rel_info_order_dict[current_person_id])
-                # print(json.dumps(self.my_rel_info_order_dict[current_person_id], ensure_ascii=False, indent=4))
-                # json.dump(self.my_rel_info_order_dict, rel_file, ensure_ascii=False, indent=4)
-                print("current_person_id:" + current_person_id + "存在self.my_rel_info_order_dict")
-            else:
-                self.query_rel_info(current_person_id)
-                print("query 新人物关系")
-                rel_temp = self.find_rel_info_in_temp1
-                if rel_temp:
-                    self.show_rel_info_in_table(rel_temp)
+                self.my_order_dict[
+                    current_person_id] = self.get_base_info_in_table()  # 获取当前基本信息表格中数据，更新self.my_order_dict
+
+                self.create_rel_info_table()
+                if current_person_id in self.my_rel_info_order_dict:
+                    self.show_rel_info_in_table(self.my_rel_info_order_dict[current_person_id])
+                    # print(json.dumps(self.my_rel_info_order_dict[current_person_id], ensure_ascii=False, indent=4))
+                    # json.dump(self.my_rel_info_order_dict, rel_file, ensure_ascii=False, indent=4)
+                    print("current_person_id:" + current_person_id + "存在self.my_rel_info_order_dict")
                 else:
-                    self.show_rel_info_in_table([])
-            """
-                此处self.table_layout.replaceWidget替换为关系表
-            """
-            self.table_layout.replaceWidget(self.table, self.rel_table)
-            self.FLAG_Current_Table = "relation"
-            print("切换为表：" + self.FLAG_Current_Table)
-            self.button1.setEnabled(False)  # 锁死"上一页"按钮
-            self.button2.setEnabled(False)  # 锁死"下一页"按钮
-            self.button3.setEnabled(False)  # 锁死"退出"按钮
+                    self.query_rel_info(current_person_id)
+                    print("query 新人物关系")
+                    rel_temp = self.find_rel_info_in_temp1
+                    if rel_temp:
+                        self.show_rel_info_in_table(rel_temp)
+                    else:
+                        self.show_rel_info_in_table([])
+                """
+                    此处self.table_layout.replaceWidget替换为关系表
+                """
+                self.table_layout.replaceWidget(self.table, self.rel_table)
+                self.FLAG_Current_Table = "relation"
+                print("切换为表：" + self.FLAG_Current_Table)
+                self.button1.setEnabled(False)  # 锁死"上一页"按钮
+                self.button2.setEnabled(False)  # 锁死"下一页"按钮
+                self.button3.setEnabled(False)  # 锁死"退出"按钮
 
-        elif self.FLAG_Current_Table == "relation":
-            print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
-            print("当前表：" + self.FLAG_Current_Table)
-            print("保存临时回话（rel_info）")
-            self.my_rel_info_order_dict[current_person_id] = self.get_rel_info_in_table()
-            # 获取当前关系信息表格中数据，更新self.my_rel_info_order_dict
+            elif self.FLAG_Current_Table == "relation":
+                print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
+                print("当前表：" + self.FLAG_Current_Table)
+                print("保存临时回话（rel_info）")
+                self.my_rel_info_order_dict[current_person_id] = self.get_rel_info_in_table()
+                # 获取当前关系信息表格中数据，更新self.my_rel_info_order_dict
 
-            self.create_event_info_table()
-            if current_person_id in self.my_event_info_order_dict:
-                self.show_event_info_in_table(self.my_event_info_order_dict[current_person_id])
-                print("person_id:" + current_person_id + "存在self.my_event_info_order_dict")
-            else:
-                self.query_event_info(current_person_id)
-                event_temp = self.find_event_info_in_temp1
-                if event_temp:
-                    self.show_event_info_in_table(event_temp)
+                """
+                    此处self.table_layout.replaceWidget替换为基本信息表
+                """
+                self.create_base_info_table()  # 创建一个新的base_info表，以便成功替换
+                if current_person_id in self.my_order_dict:
+                    self.show_base_info_in_table(self.my_order_dict[current_person_id])
                 else:
-                    self.show_event_info_in_table([])
-            """
-                此处self.table_layout.replaceWidget替换为生平表
-            """
-            self.table_layout.replaceWidget(self.rel_table, self.event_table)
-            self.FLAG_Current_Table = "event"
-            print("切换为表：" + self.FLAG_Current_Table)
-            self.button1.setEnabled(False)
-            self.button2.setEnabled(False)
-            self.button3.setEnabled(False)  # 锁死"退出"按钮
+                    print("Error! person_id:" + current_person_id + "不存在self.my_order_dict")
 
-        elif self.FLAG_Current_Table == "event":
-            print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
-            print("当前表：" + self.FLAG_Current_Table)
-            print("保存临时回话（event）")
-            self.my_event_info_order_dict[current_person_id] = self.get_event_info_in_table()
-            # 获取当前生平信息表格中数据，更新self.my_event_info_order_dict
+                self.table_layout.replaceWidget(self.rel_table, self.table)
+                self.FLAG_Current_Table = "base_info"
+                print("切换为表：" + self.FLAG_Current_Table)
+                self.button1.setEnabled(True)  # 释放"上一页"按钮
+                self.button2.setEnabled(True)  # 释放"下一页"按钮
+                self.button3.setEnabled(True)  # 释放"退出"按钮
+                self.FLAG_3_tables_check_finished = True  # 3表完成切换，即视为此人物校验完成，下一页按钮可安全点击，否则触发警告！
 
-            """
-                此处self.table_layout.replaceWidget替换为基本信息表
-            """
-            self.create_base_info_table()  # 创建一个新的base_info表，以便成功替换
-            if current_person_id in self.my_order_dict:
-                self.show_base_info_in_table(self.my_order_dict[current_person_id])
-            else:
-                print("Error! person_id:" + current_person_id + "不存在self.my_order_dict")
+        elif self.check_mode == "基本信息+生平":
+            if self.FLAG_Current_Table == "base_info":
+                print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
+                print("当前表：" + self.FLAG_Current_Table)
+                print("保存临时回话（base_info）")
 
-            self.table_layout.replaceWidget(self.event_table, self.table)
-            self.FLAG_Current_Table = "base_info"
-            print("切换为表：" + self.FLAG_Current_Table)
-            self.button1.setEnabled(True)    # 释放"上一页"按钮
-            self.button2.setEnabled(True)   # 释放"下一页"按钮
-            self.button3.setEnabled(True)  # 释放"退出"按钮
-            self.FLAG_3_tables_check_finished = True    # 3表完成切换，即视为此人物校验完成，下一页按钮可安全点击，否则触发警告！
+                self.my_order_dict[current_person_id] = self.get_base_info_in_table()  # 获取当前基本信息表格中数据，更新self.my_order_dict
+
+                self.create_event_info_table()
+                if current_person_id in self.my_event_info_order_dict:
+                    self.show_event_info_in_table(self.my_event_info_order_dict[current_person_id])
+                    print("person_id:" + current_person_id + "存在self.my_event_info_order_dict")
+                else:
+                    self.query_event_info(current_person_id)
+                    event_temp = self.find_event_info_in_temp1
+                    if event_temp:
+                        self.show_event_info_in_table(event_temp)
+                    else:
+                        self.show_event_info_in_table([])
+                """
+                    此处self.table_layout.replaceWidget替换为生平表
+                """
+                self.table_layout.replaceWidget(self.table, self.event_table)
+                self.FLAG_Current_Table = "event"
+                print("切换为表：" + self.FLAG_Current_Table)
+                self.button1.setEnabled(False)
+                self.button2.setEnabled(False)
+                self.button3.setEnabled(False)  # 锁死"退出"按钮
+
+            elif self.FLAG_Current_Table == "event":
+                print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
+                print("当前表：" + self.FLAG_Current_Table)
+                print("保存临时回话（event）")
+                self.my_event_info_order_dict[current_person_id] = self.get_event_info_in_table()
+                # 获取当前生平信息表格中数据，更新self.my_event_info_order_dict
+
+                """
+                    此处self.table_layout.replaceWidget替换为基本信息表
+                """
+                self.create_base_info_table()  # 创建一个新的base_info表，以便成功替换
+                if current_person_id in self.my_order_dict:
+                    self.show_base_info_in_table(self.my_order_dict[current_person_id])
+                else:
+                    print("Error! person_id:" + current_person_id + "不存在self.my_order_dict")
+
+                self.table_layout.replaceWidget(self.event_table, self.table)
+                self.FLAG_Current_Table = "base_info"
+                print("切换为表：" + self.FLAG_Current_Table)
+                self.button1.setEnabled(True)    # 释放"上一页"按钮
+                self.button2.setEnabled(True)   # 释放"下一页"按钮
+                self.button3.setEnabled(True)  # 释放"退出"按钮
+                self.FLAG_3_tables_check_finished = True    # 3表完成切换，即视为此人物校验完成，下一页按钮可安全点击，否则触发警告！
+
+        elif self.check_mode == "基本信息+关系+生平":
+            if self.FLAG_Current_Table == "base_info":
+                print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
+                print("当前表：" + self.FLAG_Current_Table)
+                print("保存临时回话（base_info）")
+
+                self.my_order_dict[current_person_id] = self.get_base_info_in_table()  # 获取当前基本信息表格中数据，更新self.my_order_dict
+
+                self.create_rel_info_table()
+                if current_person_id in self.my_rel_info_order_dict:
+                    self.show_rel_info_in_table(self.my_rel_info_order_dict[current_person_id])
+                    # print(json.dumps(self.my_rel_info_order_dict[current_person_id], ensure_ascii=False, indent=4))
+                    # json.dump(self.my_rel_info_order_dict, rel_file, ensure_ascii=False, indent=4)
+                    print("current_person_id:" + current_person_id + "存在self.my_rel_info_order_dict")
+                else:
+                    self.query_rel_info(current_person_id)
+                    print("query 新人物关系")
+                    rel_temp = self.find_rel_info_in_temp1
+                    if rel_temp:
+                        self.show_rel_info_in_table(rel_temp)
+                    else:
+                        self.show_rel_info_in_table([])
+                """
+                    此处self.table_layout.replaceWidget替换为关系表
+                """
+                self.table_layout.replaceWidget(self.table, self.rel_table)
+                self.FLAG_Current_Table = "relation"
+                print("切换为表：" + self.FLAG_Current_Table)
+                self.button1.setEnabled(False)  # 锁死"上一页"按钮
+                self.button2.setEnabled(False)  # 锁死"下一页"按钮
+                self.button3.setEnabled(False)  # 锁死"退出"按钮
+
+            elif self.FLAG_Current_Table == "relation":
+                print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
+                print("当前表：" + self.FLAG_Current_Table)
+                print("保存临时回话（rel_info）")
+                self.my_rel_info_order_dict[current_person_id] = self.get_rel_info_in_table()
+                # 获取当前关系信息表格中数据，更新self.my_rel_info_order_dict
+
+                self.create_event_info_table()
+                if current_person_id in self.my_event_info_order_dict:
+                    self.show_event_info_in_table(self.my_event_info_order_dict[current_person_id])
+                    print("person_id:" + current_person_id + "存在self.my_event_info_order_dict")
+                else:
+                    self.query_event_info(current_person_id)
+                    event_temp = self.find_event_info_in_temp1
+                    if event_temp:
+                        self.show_event_info_in_table(event_temp)
+                    else:
+                        self.show_event_info_in_table([])
+                """
+                    此处self.table_layout.replaceWidget替换为生平表
+                """
+                self.table_layout.replaceWidget(self.rel_table, self.event_table)
+                self.FLAG_Current_Table = "event"
+                print("切换为表：" + self.FLAG_Current_Table)
+                self.button1.setEnabled(False)
+                self.button2.setEnabled(False)
+                self.button3.setEnabled(False)  # 锁死"退出"按钮
+
+            elif self.FLAG_Current_Table == "event":
+                print('\"' + "trans_tables_button" + '\"' + "按钮被点击")
+                print("当前表：" + self.FLAG_Current_Table)
+                print("保存临时回话（event）")
+                self.my_event_info_order_dict[current_person_id] = self.get_event_info_in_table()
+                # 获取当前生平信息表格中数据，更新self.my_event_info_order_dict
+
+                """
+                    此处self.table_layout.replaceWidget替换为基本信息表
+                """
+                self.create_base_info_table()  # 创建一个新的base_info表，以便成功替换
+                if current_person_id in self.my_order_dict:
+                    self.show_base_info_in_table(self.my_order_dict[current_person_id])
+                else:
+                    print("Error! person_id:" + current_person_id + "不存在self.my_order_dict")
+
+                self.table_layout.replaceWidget(self.event_table, self.table)
+                self.FLAG_Current_Table = "base_info"
+                print("切换为表：" + self.FLAG_Current_Table)
+                self.button1.setEnabled(True)    # 释放"上一页"按钮
+                self.button2.setEnabled(True)   # 释放"下一页"按钮
+                self.button3.setEnabled(True)  # 释放"退出"按钮
+                self.FLAG_3_tables_check_finished = True    # 3表完成切换，即视为此人物校验完成，下一页按钮可安全点击，否则触发警告！
 
     @pyqtSlot()
     def ser_person_info_button_on_click(self):
@@ -1342,8 +1493,8 @@ class App(QWidget):  # 继承自 QWidget类
                 self.information_ancient_base_temp2.update_one({"person_id": person_id},
                                                                {"$set": curr_tab_base_info})
                 self.my_order_dict[person_id].update(curr_tab_base_info)
-                print(self.col_base_info_temp2_ + " " + "完成一条临时数据的修改！ " +
-                      "person_id: " + person_id)
+                # print(self.col_base_info_temp2_ + " " + "完成一条临时数据的修改！ " +
+                #       "person_id: " + person_id)
 
                 if curr_tab_rel_info:
                     self.my_rel_info_order_dict[person_id] = curr_tab_rel_info
@@ -1352,8 +1503,8 @@ class App(QWidget):  # 继承自 QWidget类
                         rel_infor_id = rel["rel_infor_id"]
                         self.information_ancient_relation_temp2.update_one({"rel_infor_id": rel_infor_id},
                                                                            {"$set": rel})
-                        print(self.col_rel_info_temp2_ + " " + "完成一条临时数据的修改！ " +
-                              "rel_infor_id: " + str(rel_infor_id))
+                        # print(self.col_rel_info_temp2_ + " " + "完成一条临时数据的修改！ " +
+                        #       "rel_infor_id: " + str(rel_infor_id))
 
                 if curr_tab_event_info:
                     self.my_event_info_order_dict[person_id] = curr_tab_event_info
@@ -1537,16 +1688,13 @@ class App(QWidget):  # 继承自 QWidget类
 
 if __name__ == '__main__':
     Job_num = ""
-    Mongodb_ip = "192.168.1.13"
+    Mongodb_ip = "192.168.1.23"
     Port = "27017"
-    # Mongodb_name = "earth_gis"
-    # Col_base_info_temp1 = "Information_ancient_base_temp1"
-    Mongodb_name = "person_basic_relathion_delete_post"
-    Col_base_info_temp1 = "person_nlp_self_check_base"
+    Mongodb_name = "earth_gis"
+    Col_base_info_temp1 = "Information_ancient_base_temp1"
     Col_base_info_temp2 = "Information_ancient_base_temp2"
     Col_base_info_final = "Information_ancient_base"
-    # Col_rel_info_temp1 = "Information_ancient_relation_temp1"
-    Col_rel_info_temp1 = "person_nlp_self_check_rel"
+    Col_rel_info_temp1 = "Information_ancient_relation_temp1"
     Col_rel_info_temp2 = "Information_ancient_relation_temp2"
     Col_rel_info_final = "Information_ancient_relation"
     Col_event_info_temp1 = "Information_ancient_event_temp1"
