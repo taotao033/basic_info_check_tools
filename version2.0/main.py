@@ -161,15 +161,15 @@ class App(QWidget):  # 继承自 QWidget类
         """
             配置搜索引擎地址
         """
-        # self.client2 = pymongo.MongoClient(host="192.168.1.115",
-        #                                    port=27017,
-        #                                    username="anyread",
-        #                                    password="helloworld")
-        # self.information_ancient_base_gold = self.client2["earth_gis"]["Information_ancient_base"]
+        self.client2 = pymongo.MongoClient(host="192.168.1.115",
+                                           port=27017,
+                                           username="anyread",
+                                           password="helloworld")
+        self.information_ancient_base_gold = self.client2["earth_gis"]["Information_ancient_base"]
 
-        self.client2 = pymongo.MongoClient(host="192.168.1.13",
-                                           port=27017)
-        self.information_ancient_base_gold = self.client2["person_basic_relathion_delete_post"]["nlp_extract_base_check_full"]
+        # self.client2 = pymongo.MongoClient(host="192.168.1.13",
+        #                                    port=27017)
+        # self.information_ancient_base_gold = self.client[self.mongodb_name_]["nlp_extract_base_check_full"]
 
         self.setup_tab_labels()  # 设置表头
         self.labels_auth_config = json.load(open("labels_auth_config.json", "r", encoding="utf-8"))
@@ -252,6 +252,8 @@ class App(QWidget):  # 继承自 QWidget类
         self.ser_person_info_button.setFixedSize(90, 30)
         self.ser_person_info_button.clicked.connect(self.ser_person_info_button_on_click)
         self.button_layout.addWidget(self.ser_person_info_button)
+
+        self.ser_person_info_button.setEnabled(False)   # 禁用　人物检索
 
         self.button3 = QPushButton('退出', self)
         self.button3.setFixedSize(70, 30)
@@ -1693,9 +1695,14 @@ if __name__ == '__main__':
     Mongodb_name = "earth_gis"
     Col_base_info_temp1 = "Information_ancient_base_temp1"
     Col_base_info_temp2 = "Information_ancient_base_temp2"
+    # Mongodb_name = "earth_gis_temp_1"
+    # Col_base_info_temp1 = "nlp_extract_base_check_person1"
+    # Col_base_info_temp2 = "history_proofreading_base"
     Col_base_info_final = "Information_ancient_base"
     Col_rel_info_temp1 = "Information_ancient_relation_temp1"
     Col_rel_info_temp2 = "Information_ancient_relation_temp2"
+    # Col_rel_info_temp1 = "pro_6_3_id_mapping_before"
+    # Col_rel_info_temp2 = "history_proofreading_rel"
     Col_rel_info_final = "Information_ancient_relation"
     Col_event_info_temp1 = "Information_ancient_event_temp1"
     Col_event_info_temp2 = "Information_ancient_event_temp2"

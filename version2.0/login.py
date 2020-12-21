@@ -236,6 +236,7 @@ class App_Login(QWidget):
         # self.check_mode_label.setAlignment(Qt.AlignLeft)
         self.cb = QComboBox()
         self.cb.addItems(["基本信息+关系", "基本信息+生平", "基本信息+关系+生平"])
+        self.cb.setCurrentText("基本信息+关系+生平")
         self.check_mode_layout.addWidget(self.check_mode_label)
         self.check_mode_layout.addWidget(self.cb)
         # self.cb.currentIndexChanged.connect(self.selectionchange)
